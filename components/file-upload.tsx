@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Upload, FileType, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,8 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 
 export function FileUpload() {
   const { toast } = useToast();
-  const [certificateImage, setCertificateImage] = useState<File | null>(null);
-  const [attendeeFile, setAttendeeFile] = useState<File | null>(null);
   const [attendeeList, setAttendeeList] = useState<string>("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -28,7 +26,6 @@ export function FileUpload() {
         return;
       }
       
-      setCertificateImage(file);
       const reader = new FileReader();
       reader.onload = (event) => {
         const imageUrl = event.target?.result as string;
@@ -55,7 +52,6 @@ export function FileUpload() {
   const handleAttendeeFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setAttendeeFile(file);
       
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -89,7 +85,7 @@ export function FileUpload() {
             title: "Attendee list uploaded",
             description: "Your attendee list has been uploaded successfully.",
           });
-        } catch (error) {
+        } catch {
           toast({
             title: "Error parsing file",
             description: "There was an error parsing the attendee file.",
@@ -102,7 +98,6 @@ export function FileUpload() {
   };
 
   const handleClearCertificate = () => {
-    setCertificateImage(null);
     setImagePreview(null);
     localStorage.removeItem('certificateImageUrl');
     
@@ -112,7 +107,6 @@ export function FileUpload() {
   };
 
   const handleClearAttendees = () => {
-    setAttendeeFile(null);
     setAttendeeList("");
     localStorage.removeItem('attendeeList');
     

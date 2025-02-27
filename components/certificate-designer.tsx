@@ -32,10 +32,9 @@ export function CertificateDesigner() {
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [attendees, setAttendees] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [canvasScale, setCanvasScale] = useState(1);
+  const [canvasScale] = useState(1);
   const [activeTab, setActiveTab] = useState("design");
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
 
@@ -202,7 +201,7 @@ export function CertificateDesigner() {
         title: "Certificates generated",
         description: `Successfully generated ${attendees.length} certificates.`,
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error generating certificates",
         description: "There was an error generating the certificates.",
@@ -306,7 +305,7 @@ export function CertificateDesigner() {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const updateElementProperty = (id: string, property: keyof TextElement, value: any) => {
+  const updateElementProperty = (id: string, property: keyof TextElement, value: string | number) => {
     setTextElements(
       textElements.map(el => 
         el.id === id ? { ...el, [property]: value } : el
@@ -320,7 +319,7 @@ export function CertificateDesigner() {
     
     // If switching to preview tab, enable preview mode
     if (value === "preview" && textElements.some(el => el.type === 'name') && attendees.length > 0) {
-      setShowPreview(true);
+      setPreviewIndex(0);
     }
   };
 
