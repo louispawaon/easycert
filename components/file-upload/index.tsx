@@ -9,6 +9,7 @@ export function FileUpload() {
   const {
     attendeeList,
     imagePreview,
+    isUploading,
     handleCertificateUpload,
     handleAttendeeFileUpload,
     handleClearCertificate,
@@ -30,6 +31,7 @@ export function FileUpload() {
             imagePreview={imagePreview}
             handleCertificateUpload={handleCertificateUpload}
             handleClearCertificate={handleClearCertificate}
+            isUploading={isUploading}
           />
           <AttendeeUpload
             attendeeList={attendeeList}

@@ -5,6 +5,7 @@ export function useFileUpload() {
   const { toast } = useToast();
   const [attendeeList, setAttendeeList] = useState<string>("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -18,10 +19,12 @@ export function useFileUpload() {
         return;
       }
       
+      setIsUploading(true);
       const reader = new FileReader();
       reader.onload = (event) => {
         const imageUrl = event.target?.result as string;
         setImagePreview(imageUrl);
+        setIsUploading(false);
         
         // Store the image URL in localStorage to share with the certificate designer
         localStorage.setItem('certificateImageUrl', imageUrl);
@@ -31,6 +34,14 @@ export function useFileUpload() {
           detail: { imageUrl } 
         });
         window.dispatchEvent(uploadEvent);
+      };
+      reader.onerror = () => {
+        setIsUploading(false);
+        toast({
+          title: "Upload failed",
+          description: "There was an error processing your image.",
+          variant: "destructive",
+        });
       };
       reader.readAsDataURL(file);
       
@@ -125,6 +136,7 @@ export function useFileUpload() {
   return {
     attendeeList,
     imagePreview,
+    isUploading,
     handleCertificateUpload,
     handleAttendeeFileUpload,
     handleClearCertificate,
