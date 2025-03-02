@@ -7,6 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Trash2 } from "lucide-react";
+import { Toggle } from "@/components/ui/toggle";
+import { Bold, Italic, Underline } from "lucide-react";
+import { FONT_OPTIONS } from '@/lib/fonts';
 
 interface TextElementEditorProps {
   element: TextElement;
@@ -46,11 +49,11 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
               <SelectValue placeholder="Select font" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Arial">Arial</SelectItem>
-              <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-              <SelectItem value="Courier New">Courier New</SelectItem>
-              <SelectItem value="Georgia">Georgia</SelectItem>
-              <SelectItem value="Verdana">Verdana</SelectItem>
+              {FONT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           
@@ -69,6 +72,33 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
               value={[element.fontSize]}
               onValueChange={(value) => onUpdate('fontSize', value[0])}
             />
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <Label>Font Style</Label>
+          <div className="flex gap-2">
+            <Toggle
+              pressed={element.fontWeight === 'bold'}
+              onPressedChange={(pressed) => onUpdate('fontWeight', pressed ? 'bold' : 'normal')}
+              aria-label="Toggle bold"
+            >
+              <Bold className="h-4 w-4" />
+            </Toggle>
+            <Toggle
+              pressed={element.fontStyle === 'italic'}
+              onPressedChange={(pressed) => onUpdate('fontStyle', pressed ? 'italic' : 'normal')}
+              aria-label="Toggle italic"
+            >
+              <Italic className="h-4 w-4" />
+            </Toggle>
+            <Toggle
+              pressed={element.textDecoration === 'underline'}
+              onPressedChange={(pressed) => onUpdate('textDecoration', pressed ? 'underline' : 'none')}
+              aria-label="Toggle underline"
+            >
+              <Underline className="h-4 w-4" />
+            </Toggle>
           </div>
         </div>
         
@@ -112,6 +142,18 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
               />
             </div>
           </div>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="line-height">Line Height</Label>
+          <Slider
+            id="line-height"
+            min={0.8}
+            max={3}
+            step={0.1}
+            value={[element.lineHeight]}
+            onValueChange={(value) => onUpdate('lineHeight', value[0])}
+          />
         </div>
       </div>
     </div>

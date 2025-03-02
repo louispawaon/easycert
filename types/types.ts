@@ -8,6 +8,11 @@ export type TextElement = {
   fontFamily: string;
   color: string;
   isDragging: boolean;
+  fontWeight: 'normal' | 'bold' | 'lighter' | number;
+  fontStyle: 'normal' | 'italic';
+  textDecoration: 'none' | 'underline' | 'line-through';
+  textAlign: 'left' | 'center' | 'right';
+  lineHeight: number;
 }; 
 
 export interface ImageDimensions {

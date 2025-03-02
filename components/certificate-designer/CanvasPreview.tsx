@@ -68,12 +68,17 @@ export function CanvasPreview({
               left: `${element.x}px`,
               top: `${element.y}px`,
               fontSize: `${element.fontSize}px`,
-              fontFamily: element.fontFamily,
+              fontFamily: `var(--font-${element.fontFamily.toLowerCase().replace(/ /g, '-')})`,
               color: element.color,
               padding: '4px',
               userSelect: 'none',
               backgroundColor: selectedElement === element.id ? 'rgba(0,0,0,0.05)' : 'transparent',
               zIndex: 10,
+              fontWeight: element.fontWeight,
+              fontStyle: element.fontStyle,
+              textDecoration: element.textDecoration,
+              textAlign: element.textAlign,
+              lineHeight: element.lineHeight
             }}
             onClick={(e) => {
               e.stopPropagation();

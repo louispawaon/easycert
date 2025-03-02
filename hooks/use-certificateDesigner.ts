@@ -89,7 +89,12 @@ export function useCertificateDesigner() {
       fontSize: 24,
       fontFamily: 'Arial',
       color: '#000000',
-      isDragging: false
+      isDragging: false,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textDecoration: 'none',
+      textAlign: 'left',
+      lineHeight: 1.2
     };
     setTextElements(prev => [...prev, newElement]);
     setSelectedElement(newElement.id);
