@@ -8,12 +8,14 @@ interface CertificateUploadProps {
   imagePreview: string | null;
   handleCertificateUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleClearCertificate: () => void;
+  isUploading: boolean;
 }
 
 export function CertificateUpload({
   imagePreview,
   handleCertificateUpload,
-  handleClearCertificate
+  handleClearCertificate,
+  isUploading
 }: CertificateUploadProps) {
   return (
     <div className="space-y-4">
@@ -39,19 +41,29 @@ export function CertificateUpload({
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-md border border-dashed p-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Upload className="h-6 w-6 text-primary" />
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Drag and drop or click to upload
-            </p>
-            <Input
-              id="certificate"
-              type="file"
-              accept="image/*"
-              className="mt-4"
-              onChange={handleCertificateUpload}
-            />
+            {isUploading ? (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <p className="text-sm text-muted-foreground">Uploading...</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <Upload className="h-6 w-6 text-primary" />
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Drag and drop or click to upload
+                </p>
+                <Input
+                  id="certificate"
+                  type="file"
+                  accept="image/*"
+                  className="mt-4"
+                  onChange={handleCertificateUpload}
+                  disabled={isUploading}
+                />
+              </>
+            )}
           </div>
         )}
       </div>

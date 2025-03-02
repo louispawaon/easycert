@@ -3,8 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Download, Save } from "lucide-react";
+import { Download } from "lucide-react";
 
 interface CertificateGeneratorProps {
   imageUrl: string | null;
@@ -62,18 +61,7 @@ export function CertificateGenerator({
         </div>
       </div>
       
-      <div className="space-y-2 border-t pt-4">
-        <div className="flex items-center space-x-2">
-          <Switch id="zip-files" />
-          <Label htmlFor="zip-files">Package certificates as ZIP file</Label>
-        </div>
-      </div>
-      
       <div className="flex justify-between">
-        <Button variant="outline">
-          <Save className="mr-2 h-4 w-4" />
-          Save Project
-        </Button>
         <Button 
           onClick={onGenerate}
           disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
