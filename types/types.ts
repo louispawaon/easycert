@@ -9,3 +9,8 @@ export type TextElement = {
   color: string;
   isDragging: boolean;
 }; 
+
+export interface ImageDimentsions {
+  width: number;
+  height: number;
+}
