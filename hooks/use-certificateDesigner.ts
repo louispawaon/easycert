@@ -276,11 +276,7 @@ export function useCertificateDesigner() {
       setAttendees(names);
     } else {
       setAttendees([
-        "John Doe",
-        "Jane Smith",
-        "Michael Johnson",
-        "Emily Williams",
-        "Robert Brown"
+        "John Doe\nJane Smith\nMichael Johnson\nEmily Williams\nRobert Brown"
       ]);
     }
 

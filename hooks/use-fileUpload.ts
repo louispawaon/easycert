@@ -10,7 +10,12 @@ export function useFileUpload() {
   const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // Set uploading state immediately
+      setIsUploading(true);
+      
       if (!file.type.startsWith("image/")) {
+        setIsUploading(false); // Reset if invalid
         toast({
           title: "Invalid file type",
           description: "Please upload an image file for the certificate template.",
@@ -19,22 +24,20 @@ export function useFileUpload() {
         return;
       }
       
-      setIsUploading(true);
       const reader = new FileReader();
       reader.onload = (event) => {
         const imageUrl = event.target?.result as string;
         setImagePreview(imageUrl);
         setIsUploading(false);
         
-        // Store the image URL in localStorage to share with the certificate designer
         localStorage.setItem('certificateImageUrl', imageUrl);
         
-        // Dispatch a custom event to notify the certificate designer
         const uploadEvent = new CustomEvent('certificate-image-uploaded', { 
           detail: { imageUrl } 
         });
         window.dispatchEvent(uploadEvent);
       };
+      
       reader.onerror = () => {
         setIsUploading(false);
         toast({
@@ -43,6 +46,7 @@ export function useFileUpload() {
           variant: "destructive",
         });
       };
+      
       reader.readAsDataURL(file);
       
       toast({
