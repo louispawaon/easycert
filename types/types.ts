@@ -10,7 +10,7 @@ export type TextElement = {
   isDragging: boolean;
 }; 
 
-export interface ImageDimentsions {
+export interface ImageDimensions {
   width: number;
   height: number;
 }
