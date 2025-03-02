@@ -5,12 +5,12 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://easycert.vercel.app/'),
   title: 'EasyCert - Certificate Generation Made Easy',
   description: 'Automate your certificate generation process with EasyCert',
   openGraph: {
     title: 'EasyCert - Certificate Generation Made Easy',
     description: 'Automate your certificate generation process with EasyCert',
-    url: 'https://easycert.vercel.app/',
     siteName: 'EasyCert',
     images: [
       {
