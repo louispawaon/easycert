@@ -2,11 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-
+:root {
+  --font-arial: Arial, sans-serif;
+  --font-times-new-roman: 'Times New Roman', serif;
+  --font-courier-new: 'Courier New', monospace;
+}
 
 @layer base {
   :root {
-
+    
     --background: 0 0% 100%;
 
     --foreground: 0 0% 3.9%;
