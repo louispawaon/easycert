@@ -9,8 +9,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <div className="md:hidden">
-        <Alert className="bg-yellow-50 border-yellow-400">
-          <AlertDescription className="flex items-center gap-2 justify-center text-sm">
+        <Alert className="bg-yellow-50 dark:bg-yellow-900 border-yellow-400 dark:border-yellow-600">
+          <AlertDescription className="flex items-center gap-2 justify-center text-sm text-yellow-900 dark:text-yellow-100">
             <Smartphone className="w-4 h-4" />
             For the best experience, we recommend using EasyCert on a desktop or tablet.
           </AlertDescription>
