@@ -56,3 +56,23 @@ export function setLocalStorageItem(key: string, value: string): void {
 export function removeLocalStorageItem(key: string): void {
   localStorage.removeItem(key);
 }
+
+export async function generatePDF(certificates: string[], filename: string) {
+  const { jsPDF } = await import('jspdf');
+  const pdf = new jsPDF('landscape', 'px', 'a4');
+  
+  for (let i = 0; i < certificates.length; i++) {
+    if (i > 0) {
+      pdf.addPage();
+    }
+    const img = new Image();
+    img.src = certificates[i];
+    await new Promise((resolve) => (img.onload = resolve));
+    
+    const width = pdf.internal.pageSize.getWidth();
+    const height = pdf.internal.pageSize.getHeight();
+    pdf.addImage(img, 'PNG', 0, 0, width, height);
+  }
+  
+  pdf.save(filename);
+}

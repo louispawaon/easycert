@@ -8,6 +8,7 @@ import { useCertificateImage } from "@/hooks/use-certificate";
 import JSZip from "jszip";
 import { getLocalStorageItem } from "@/lib/utils";
 import { addEventListener, removeEventListener } from "@/lib/utils";
+import { generatePDF } from "@/lib/utils";
 
 export function useCertificateDesigner() {
   const { toast } = useToast();
@@ -200,24 +201,27 @@ export function useCertificateDesigner() {
     setIsGenerating(true);
 
     try {
+      const certificates: string[] = [];
+      for (const attendee of attendees) {
+        const cert = await generateCertificateImage(attendee);
+        if (cert) certificates.push(cert);
+      }
+
       const zip = new JSZip();
-      const total = attendees.length;
+      const total = certificates.length;
       let completed = 0;
 
-      for (const name of attendees) {
-        const imageData = await generateCertificateImage(name);
-        if (imageData) {
-          const base64Data = imageData.split(',')[1];
-          const binaryString = atob(base64Data);
-          const arrayBuffer = new ArrayBuffer(binaryString.length);
-          const uint8Array = new Uint8Array(arrayBuffer);
-          
-          for (let i = 0; i < binaryString.length; i++) {
-            uint8Array[i] = binaryString.charCodeAt(i);
-          }
-          
-          zip.file(`certificate_${name}.png`, uint8Array, { binary: true });
+      for (const cert of certificates) {
+        const base64Data = cert.split(',')[1];
+        const binaryString = atob(base64Data);
+        const arrayBuffer = new ArrayBuffer(binaryString.length);
+        const uint8Array = new Uint8Array(arrayBuffer);
+        
+        for (let i = 0; i < binaryString.length; i++) {
+          uint8Array[i] = binaryString.charCodeAt(i);
         }
+        
+        zip.file(`certificate_${attendees[completed]}.png`, uint8Array, { binary: true });
         completed++;
         console.log(`Generated ${completed} of ${total} certificates`);
       }
@@ -244,6 +248,20 @@ export function useCertificateDesigner() {
       setIsGenerating(false);
     }
   }, [imageUrl, attendees, textElements, generateCertificateImage, toast]);
+
+  const generateCertificatesPDF = useCallback(async () => {
+    setIsGenerating(true);
+    try {
+      const certificates: string[] = [];
+      for (const attendee of attendees) {
+        const cert = await generateCertificateImage(attendee);
+        if (cert) certificates.push(cert);
+      }
+      await generatePDF(certificates, 'Certificates.pdf');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [attendees, generateCertificateImage]);
 
   // Memoize component props
   const canvasPreviewProps = useMemo(() => ({
@@ -329,6 +347,7 @@ export function useCertificateDesigner() {
     generateCertificateImage,
     downloadCertificate,
     generateCertificates,
+    generateCertificatesPDF,
     canvasPreviewProps,
     certificatePreviewProps,
     attendeesCount,

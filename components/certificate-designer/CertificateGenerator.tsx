@@ -12,6 +12,7 @@ interface CertificateGeneratorProps {
   namePlaceholdersCount: number;
   isGenerating: boolean;
   onGenerate: () => void;
+  onGeneratePDF: () => void;
 }
 
 export function CertificateGenerator({
@@ -20,7 +21,8 @@ export function CertificateGenerator({
   textElementsCount,
   namePlaceholdersCount,
   isGenerating,
-  onGenerate
+  onGenerate,
+  onGeneratePDF
 }: CertificateGeneratorProps) {
   return (
     <div className="space-y-4">
@@ -61,10 +63,11 @@ export function CertificateGenerator({
         </div>
       </div>
       
-      <div className="flex justify-between">
+      <div className="flex justify-between gap-2">
         <Button 
           onClick={onGenerate}
           disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
+          variant="outline"
         >
           {isGenerating ? (
             <>
@@ -74,9 +77,16 @@ export function CertificateGenerator({
           ) : (
             <>
               <Download className="mr-2 h-4 w-4" />
-              Generate All Certificates
+              Generate Individual Certificates
             </>
           )}
+        </Button>
+        <Button 
+          onClick={onGeneratePDF}
+          disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Generate PDF
         </Button>
       </div>
     </div>

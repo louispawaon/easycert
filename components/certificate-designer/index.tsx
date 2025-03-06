@@ -27,7 +27,8 @@ export function CertificateDesigner() {
     attendeesCount,
     textElementsCount,
     namePlaceholdersCount,
-    generateCertificates
+    generateCertificates,
+    generateCertificatesPDF
   } = useCertificateDesigner();
 
   return (
@@ -102,6 +103,7 @@ export function CertificateDesigner() {
                   namePlaceholdersCount={namePlaceholdersCount}
                   isGenerating={isGenerating}
                   onGenerate={generateCertificates}
+                  onGeneratePDF={generateCertificatesPDF}
                 />
               </CardContent>
             </Card>
