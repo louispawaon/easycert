@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/useToast";
 import { TextElement } from "@/types/types";
-import { useAttendees } from "@/hooks/use-attendees";
-import { useCertificateImage } from "@/hooks/use-certificate";
+import { useAttendees } from "@/hooks/useAttendees";
+import { useCertificateImage } from "@/hooks/useCertificate";
 import JSZip from "jszip";
 import { getLocalStorageItem } from "@/lib/utils";
 import { addEventListener, removeEventListener } from "@/lib/utils";
