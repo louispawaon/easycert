@@ -4,6 +4,7 @@ import { TextElement } from "@/types/types";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import Image from 'next/image';
+import { useFontLoader } from '@/hooks/useFontLoader';
 
 interface CertificatePreviewProps {
   imageUrl: string | null;
@@ -24,6 +25,8 @@ export function CertificatePreview({
   onPreviewChange,
   imageDimensions
 }: CertificatePreviewProps) {
+  useFontLoader();
+
   return (
     <div className="border rounded-md p-4 bg-muted/20">
       <div className="flex justify-between items-center mb-4">

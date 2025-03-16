@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCertificateDesigner } from "@/hooks/use-certificateDesigner";
+import { useCertificateDesigner } from "@/hooks/useCertificateDesigner";
 import { CanvasPreview } from "@/components/certificate-designer/CanvasPreview";
 import { TextElementEditor } from "@/components/certificate-designer/TextElementEditor";
 import { CertificateControls } from "@/components/certificate-designer/CertificateControls";

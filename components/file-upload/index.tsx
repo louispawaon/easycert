@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useFileUpload } from "@/hooks/use-fileUpload";
+import { useFileUpload } from "@/hooks/useFileUpload";
 import { CertificateUpload } from "@/components/file-upload/CertificateUpload";
 import { AttendeeUpload } from "@/components/file-upload/AttendeeUpload";
 
