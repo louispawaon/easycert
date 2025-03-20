@@ -2,6 +2,8 @@
 
 import { TextElement } from "@/types/types";
 import Image from 'next/image';
+import { CUSTOM_FONTS } from '@/lib/fonts';
+import { useFontLoader } from '@/hooks/useFontLoader';
 
 interface CanvasPreviewProps {
   imageUrl: string | null;
@@ -22,6 +24,8 @@ export function CanvasPreview({
   imageDimensions,
   canvasRef
 }: CanvasPreviewProps) {
+  useFontLoader();
+
   return (
     <div className="relative border rounded-md overflow-hidden bg-white"
       ref={canvasRef}
@@ -68,7 +72,9 @@ export function CanvasPreview({
               left: `${element.x}px`,
               top: `${element.y}px`,
               fontSize: `${element.fontSize}px`,
-              fontFamily: `var(--font-${element.fontFamily.toLowerCase().replace(/ /g, '-')})`,
+              fontFamily: CUSTOM_FONTS[element.fontFamily] 
+                ? element.fontFamily 
+                : `var(--font-${element.fontFamily.toLowerCase().replace(/ /g, '-')})`,
               color: element.color,
               padding: '4px',
               userSelect: 'none',
