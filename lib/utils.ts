@@ -63,19 +63,44 @@ export function removeLocalStorageItem(key: string): void {
 
 export async function generatePDF(certificates: string[], filename: string) {
   const { jsPDF } = await import('jspdf');
-  const pdf = new jsPDF('landscape', 'px', 'a4');
+    
+  const firstImg = new Image();
+  firstImg.src = certificates[0];
+  await new Promise((resolve) => (firstImg.onload = resolve));
   
+  const pdf = new jsPDF({
+    orientation: firstImg.width > firstImg.height ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
   for (let i = 0; i < certificates.length; i++) {
-    if (i > 0) {
-      pdf.addPage();
-    }
     const img = new Image();
     img.src = certificates[i];
     await new Promise((resolve) => (img.onload = resolve));
     
-    const width = pdf.internal.pageSize.getWidth();
-    const height = pdf.internal.pageSize.getHeight();
-    pdf.addImage(img, 'PNG', 0, 0, width, height);
+    if (i > 0) {
+      pdf.addPage('a4', img.width > img.height ? 'landscape' : 'portrait');
+    }
+    
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgRatio = img.width / img.height;
+    const pageRatio = pageWidth / pageHeight;
+    
+    let width, height;
+    if (imgRatio > pageRatio) {
+      width = pageWidth;
+      height = pageWidth / imgRatio;
+    } else {
+      height = pageHeight;
+      width = pageHeight * imgRatio;
+    }
+    
+    const x = (pageWidth - width) / 2;
+    const y = (pageHeight - height) / 2;
+    
+    pdf.addImage(img, 'PNG', x, y, width, height);
   }
   
   pdf.save(filename);
