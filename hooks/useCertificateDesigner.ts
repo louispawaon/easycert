@@ -232,12 +232,25 @@ export function useCertificateDesigner() {
           uint8Array[i] = binaryString.charCodeAt(i);
         }
         
-        zip.file(`certificate_${attendees[completed]}.png`, uint8Array, { binary: true });
+        // Compress images in ZIP
+        zip.file(`certificate_${attendees[completed]}.png`, uint8Array, { 
+          binary: true,
+          compression: 'DEFLATE',
+          compressionOptions: {
+            level: 6 // Medium compression level
+          }
+        });
         completed++;
         console.log(`Generated ${completed} of ${total} certificates`);
       }
 
-      const content = await zip.generateAsync({ type: 'blob' });
+      const content = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: {
+          level: 6
+        }
+      });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(content);
       link.download = 'certificates.zip';

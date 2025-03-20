@@ -20,12 +20,15 @@ export async function generateCertificateImage(
   img.src = imageUrl;
   await new Promise((resolve) => (img.onload = resolve));
 
-  canvas.width = img.width;
-  canvas.height = img.height;
-  ctx.drawImage(img, 0, 0);
+  const maxDimension = 2000; // Maximum dimension for either width or height
+  const scale = Math.min(maxDimension / img.width, maxDimension / img.height);
+  canvas.width = img.width * scale;
+  canvas.height = img.height * scale;
+  
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  const scaleX = img.width / previewDimensions.width;
-  const scaleY = img.height / previewDimensions.height;
+  const scaleX = canvas.width / previewDimensions.width;
+  const scaleY = canvas.height / previewDimensions.height;
 
   textElements.forEach((element) => {
     ctx.font = `${element.fontSize * scaleY}px ${element.fontFamily}`;
@@ -34,7 +37,7 @@ export async function generateCertificateImage(
     ctx.fillText(text, element.x * scaleX, element.y * scaleY);
   });
 
-  return canvas.toDataURL('image/png');
+  return canvas.toDataURL('image/png', 0.9);
 }
 
 export function addEventListener(event: string, handler: EventListener): void {
@@ -71,7 +74,8 @@ export async function generatePDF(certificates: string[], filename: string) {
   const pdf = new jsPDF({
     orientation: firstImg.width > firstImg.height ? 'landscape' : 'portrait',
     unit: 'mm',
-    format: 'a4'
+    format: 'a4',
+    compress: true // Enable PDF compression
   });
 
   for (let i = 0; i < certificates.length; i++) {
@@ -100,7 +104,7 @@ export async function generatePDF(certificates: string[], filename: string) {
     const x = (pageWidth - width) / 2;
     const y = (pageHeight - height) / 2;
     
-    pdf.addImage(img, 'PNG', x, y, width, height);
+    pdf.addImage(img, 'JPEG', x, y, width, height, undefined, 'FAST');
   }
   
   pdf.save(filename);
