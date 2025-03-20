@@ -11,11 +11,21 @@ export function useFileUpload() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // Set uploading state immediately
+      // Add size validation (e.g., 5MB limit)
+      const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+      if (file.size > MAX_SIZE) {
+        toast({
+          title: "File too large",
+          description: "Please upload an image smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       setIsUploading(true);
       
       if (!file.type.startsWith("image/")) {
-        setIsUploading(false); // Reset if invalid
+        setIsUploading(false);
         toast({
           title: "Invalid file type",
           description: "Please upload an image file for the certificate template.",
