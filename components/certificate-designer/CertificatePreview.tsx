@@ -4,6 +4,8 @@ import { TextElement } from "@/types/types";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import Image from 'next/image';
+import { useFontLoader } from '@/hooks/useFontLoader';
+import { CUSTOM_FONTS } from '@/lib/fonts';
 
 interface CertificatePreviewProps {
   imageUrl: string | null;
@@ -24,6 +26,8 @@ export function CertificatePreview({
   onPreviewChange,
   imageDimensions
 }: CertificatePreviewProps) {
+  useFontLoader();
+
   return (
     <div className="border rounded-md p-4 bg-muted/20">
       <div className="flex justify-between items-center mb-4">
@@ -87,11 +91,18 @@ export function CertificatePreview({
               left: `${element.x}px`,
               top: `${element.y}px`,
               fontSize: `${element.fontSize}px`,
-              fontFamily: element.fontFamily,
+              fontFamily: CUSTOM_FONTS[element.fontFamily] 
+                ? element.fontFamily 
+                : `var(--font-${element.fontFamily.toLowerCase().replace(/ /g, '-')})`,
               color: element.color,
               padding: '4px',
               userSelect: 'none',
               zIndex: 10,
+              fontWeight: element.fontWeight,
+              fontStyle: element.fontStyle,
+              textDecoration: element.textDecoration,
+              textAlign: element.textAlign,
+              lineHeight: element.lineHeight
             }}
           >
             {element.type === 'name' ? attendees[previewIndex] : element.text}

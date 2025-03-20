@@ -40,7 +40,29 @@ export function CertificateUpload({
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center rounded-md border border-dashed p-8">
+          <div 
+            className="flex flex-col items-center justify-center rounded-md border border-dashed p-8"
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.add('bg-primary/10');
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.remove('bg-primary/10');
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.remove('bg-primary/10');
+              if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                const event = {
+                  target: {
+                    files: e.dataTransfer.files
+                  }
+                } as React.ChangeEvent<HTMLInputElement>;
+                handleCertificateUpload(event);
+              }
+            }}
+          >
             {isUploading ? (
               <div className="flex items-center justify-center space-x-2">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />

@@ -9,7 +9,11 @@ import { Slider } from "@/components/ui/slider";
 import { Trash2 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Bold, Italic, Underline } from "lucide-react";
-import { FONT_OPTIONS } from '@/lib/fonts';
+import { getFontOptions } from '@/lib/fonts';
+import { useFontLoader } from '@/hooks/useFontLoader';
+import { useFontUpload } from '@/hooks/useFontUpload';
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface TextElementEditorProps {
   element: TextElement;
@@ -18,6 +22,15 @@ interface TextElementEditorProps {
 }
 
 export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEditorProps) {
+  const {
+    fontFile,
+    setFontFile,
+    handleFontUpload
+  } = useFontUpload();
+  const [showFontUpload, setShowFontUpload] = useState(false);
+
+  useFontLoader(element.fontFamily);
+
   return (
     <div className="border rounded-md p-4">
       <div className="flex justify-between items-center mb-4">
@@ -41,6 +54,41 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
       <div className="space-y-4">
         <div className="space-y-2">
           <Label className="flex items-center gap-2">Font Settings</Label>
+          
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => setShowFontUpload(!showFontUpload)}
+            >
+              + Add Custom Font
+              {showFontUpload ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+
+            {showFontUpload && (
+              <div className="space-y-2 p-2 border rounded-md">
+                <div className="flex gap-2">
+                  <Input
+                    type="file"
+                    accept=".ttf,.otf,.woff,.woff2"
+                    onChange={(e) => e.target.files && setFontFile(e.target.files[0])}
+                  />
+                  <Button 
+                    onClick={handleFontUpload}
+                    disabled={!fontFile}
+                  >
+                    Upload Font
+                  </Button>
+                </div>
+                {fontFile && (
+                  <p className="text-sm text-muted-foreground">
+                    Font name will be: {fontFile.name.replace(/\.[^/.]+$/, "")}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <Select
             value={element.fontFamily}
             onValueChange={(value) => onUpdate('fontFamily', value)}
@@ -49,7 +97,7 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
               <SelectValue placeholder="Select font" />
             </SelectTrigger>
             <SelectContent>
-              {FONT_OPTIONS.map((option) => (
+              {getFontOptions().map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

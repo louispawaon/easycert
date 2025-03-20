@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/useToast";
 import { TextElement } from "@/types/types";
-import { useAttendees } from "@/hooks/use-attendees";
-import { useCertificateImage } from "@/hooks/use-certificate";
+import { useAttendees } from "@/hooks/useAttendees";
+import { useCertificateImage } from "@/hooks/useCertificate";
 import JSZip from "jszip";
 import { getLocalStorageItem } from "@/lib/utils";
 import { addEventListener, removeEventListener } from "@/lib/utils";
@@ -132,10 +132,21 @@ export function useCertificateDesigner() {
       const scaleY = canvas.height / 500;
 
       textElements.forEach((element) => {
-        ctx.font = `${element.fontSize * scaleY}px ${element.fontFamily}`;
+        // Set text properties
+        const fontSize = element.fontSize * scaleY;
+        ctx.font = `${element.fontStyle} ${element.fontWeight} ${fontSize}px ${element.fontFamily}`;
         ctx.fillStyle = element.color;
+        ctx.textAlign = element.textAlign || 'left';
+        
+        // Get the text to render
         const text = element.type === 'name' ? name : element.text;
-        ctx.fillText(text, element.x * scaleX, element.y * scaleY);
+        
+        // Account for the padding that exists in the preview
+        const paddingOffset = 4 * scaleY; 
+        const x = element.x * scaleX + paddingOffset;
+        const y = (element.y * scaleY) + fontSize + paddingOffset; 
+
+        ctx.fillText(text, x, y);
       });
 
       const dataUrl = canvas.toDataURL('image/png', 1.0);
@@ -221,12 +232,25 @@ export function useCertificateDesigner() {
           uint8Array[i] = binaryString.charCodeAt(i);
         }
         
-        zip.file(`certificate_${attendees[completed]}.png`, uint8Array, { binary: true });
+        // Compress images in ZIP
+        zip.file(`certificate_${attendees[completed]}.png`, uint8Array, { 
+          binary: true,
+          compression: 'DEFLATE',
+          compressionOptions: {
+            level: 6 // Medium compression level
+          }
+        });
         completed++;
         console.log(`Generated ${completed} of ${total} certificates`);
       }
 
-      const content = await zip.generateAsync({ type: 'blob' });
+      const content = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: {
+          level: 6
+        }
+      });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(content);
       link.download = 'certificates.zip';
@@ -294,7 +318,11 @@ export function useCertificateDesigner() {
       setAttendees(names);
     } else {
       setAttendees([
-        "John Doe\nJane Smith\nMichael Johnson\nEmily Williams\nRobert Brown"
+        "John Doe",
+        "Jane Smith",
+        "Michael Johnson",
+        "Emily Williams",
+        "Robert Brown"
       ]);
     }
 

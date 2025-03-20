@@ -10,7 +10,8 @@ export async function generateCertificateImage(
   name: string,
   imageUrl: string,
   textElements: TextElement[],
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
+  previewDimensions: { width: number; height: number }
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
@@ -19,18 +20,24 @@ export async function generateCertificateImage(
   img.src = imageUrl;
   await new Promise((resolve) => (img.onload = resolve));
 
-  canvas.width = img.width;
-  canvas.height = img.height;
-  ctx.drawImage(img, 0, 0);
+  const maxDimension = 2000; // Maximum dimension for either width or height
+  const scale = Math.min(maxDimension / img.width, maxDimension / img.height);
+  canvas.width = img.width * scale;
+  canvas.height = img.height * scale;
+  
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  const scaleX = canvas.width / previewDimensions.width;
+  const scaleY = canvas.height / previewDimensions.height;
 
   textElements.forEach((element) => {
-    ctx.font = `${element.fontSize}px ${element.fontFamily}`;
+    ctx.font = `${element.fontSize * scaleY}px ${element.fontFamily}`;
     ctx.fillStyle = element.color;
     const text = element.type === 'name' ? name : element.text;
-    ctx.fillText(text, element.x, element.y);
+    ctx.fillText(text, element.x * scaleX, element.y * scaleY);
   });
 
-  return canvas.toDataURL('image/png');
+  return canvas.toDataURL('image/png', 0.9);
 }
 
 export function addEventListener(event: string, handler: EventListener): void {
@@ -59,19 +66,45 @@ export function removeLocalStorageItem(key: string): void {
 
 export async function generatePDF(certificates: string[], filename: string) {
   const { jsPDF } = await import('jspdf');
-  const pdf = new jsPDF('landscape', 'px', 'a4');
+    
+  const firstImg = new Image();
+  firstImg.src = certificates[0];
+  await new Promise((resolve) => (firstImg.onload = resolve));
   
+  const pdf = new jsPDF({
+    orientation: firstImg.width > firstImg.height ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true // Enable PDF compression
+  });
+
   for (let i = 0; i < certificates.length; i++) {
-    if (i > 0) {
-      pdf.addPage();
-    }
     const img = new Image();
     img.src = certificates[i];
     await new Promise((resolve) => (img.onload = resolve));
     
-    const width = pdf.internal.pageSize.getWidth();
-    const height = pdf.internal.pageSize.getHeight();
-    pdf.addImage(img, 'PNG', 0, 0, width, height);
+    if (i > 0) {
+      pdf.addPage('a4', img.width > img.height ? 'landscape' : 'portrait');
+    }
+    
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgRatio = img.width / img.height;
+    const pageRatio = pageWidth / pageHeight;
+    
+    let width, height;
+    if (imgRatio > pageRatio) {
+      width = pageWidth;
+      height = pageWidth / imgRatio;
+    } else {
+      height = pageHeight;
+      width = pageHeight * imgRatio;
+    }
+    
+    const x = (pageWidth - width) / 2;
+    const y = (pageHeight - height) / 2;
+    
+    pdf.addImage(img, 'JPEG', x, y, width, height, undefined, 'FAST');
   }
   
   pdf.save(filename);
