@@ -132,10 +132,21 @@ export function useCertificateDesigner() {
       const scaleY = canvas.height / 500;
 
       textElements.forEach((element) => {
-        ctx.font = `${element.fontSize * scaleY}px ${element.fontFamily}`;
+        // Set text properties
+        const fontSize = element.fontSize * scaleY;
+        ctx.font = `${element.fontStyle} ${element.fontWeight} ${fontSize}px ${element.fontFamily}`;
         ctx.fillStyle = element.color;
+        ctx.textAlign = element.textAlign || 'left';
+        
+        // Get the text to render
         const text = element.type === 'name' ? name : element.text;
-        ctx.fillText(text, element.x * scaleX, element.y * scaleY);
+        
+        // Account for the padding that exists in the preview
+        const paddingOffset = 4 * scaleY; 
+        const x = element.x * scaleX + paddingOffset;
+        const y = (element.y * scaleY) + fontSize + paddingOffset; 
+
+        ctx.fillText(text, x, y);
       });
 
       const dataUrl = canvas.toDataURL('image/png', 1.0);

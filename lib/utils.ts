@@ -10,7 +10,8 @@ export async function generateCertificateImage(
   name: string,
   imageUrl: string,
   textElements: TextElement[],
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
+  previewDimensions: { width: number; height: number }
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
@@ -23,11 +24,14 @@ export async function generateCertificateImage(
   canvas.height = img.height;
   ctx.drawImage(img, 0, 0);
 
+  const scaleX = img.width / previewDimensions.width;
+  const scaleY = img.height / previewDimensions.height;
+
   textElements.forEach((element) => {
-    ctx.font = `${element.fontSize}px ${element.fontFamily}`;
+    ctx.font = `${element.fontSize * scaleY}px ${element.fontFamily}`;
     ctx.fillStyle = element.color;
     const text = element.type === 'name' ? name : element.text;
-    ctx.fillText(text, element.x, element.y);
+    ctx.fillText(text, element.x * scaleX, element.y * scaleY);
   });
 
   return canvas.toDataURL('image/png');
