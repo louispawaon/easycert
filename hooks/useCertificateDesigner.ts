@@ -287,6 +287,18 @@ export function useCertificateDesigner() {
     }
   }, [attendees, generateCertificateImage]);
 
+  const handlePreviewAdjustment = useCallback((elementId: string, attendee: string, adjustment: { x: number; y: number }) => {
+    setTextElements(prev => prev.map(el => 
+      el.id === elementId ? {
+        ...el,
+        individualAdjustments: {
+          ...el.individualAdjustments,
+          [attendee]: adjustment
+        }
+      } : el
+    ));
+  }, []);
+
   // Memoize component props
   const canvasPreviewProps = useMemo(() => ({
     imageUrl,
@@ -380,6 +392,7 @@ export function useCertificateDesigner() {
     certificatePreviewProps,
     attendeesCount,
     textElementsCount,
-    namePlaceholdersCount
+    namePlaceholdersCount,
+    handlePreviewAdjustment
   };
 }

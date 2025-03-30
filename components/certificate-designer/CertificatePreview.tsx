@@ -15,6 +15,7 @@ interface CertificatePreviewProps {
   onDownload: () => void;
   onPreviewChange: (index: number) => void;
   imageDimensions: { width: number; height: number };
+  onPreviewAdjustment: (id: string, name: string, adjustment: { x: number; y: number }) => void;
 }
 
 export function CertificatePreview({
@@ -24,7 +25,8 @@ export function CertificatePreview({
   textElements,
   onDownload,
   onPreviewChange,
-  imageDimensions
+  imageDimensions,
+  onPreviewAdjustment
 }: CertificatePreviewProps) {
   useFontLoader();
 
@@ -83,31 +85,78 @@ export function CertificatePreview({
           </div>
         )}
         
-        {attendees.length > 0 && textElements.map((element) => (
-          <div
-            key={element.id}
-            className="absolute"
-            style={{
-              left: `${element.x}px`,
-              top: `${element.y}px`,
-              fontSize: `${element.fontSize}px`,
-              fontFamily: CUSTOM_FONTS[element.fontFamily] 
-                ? element.fontFamily 
-                : `var(--font-${element.fontFamily.toLowerCase().replace(/ /g, '-')})`,
-              color: element.color,
-              padding: '4px',
-              userSelect: 'none',
-              zIndex: 10,
-              fontWeight: element.fontWeight,
-              fontStyle: element.fontStyle,
-              textDecoration: element.textDecoration,
-              textAlign: element.textAlign,
-              lineHeight: element.lineHeight
-            }}
-          >
-            {element.type === 'name' ? attendees[previewIndex] : element.text}
-          </div>
-        ))}
+        {attendees.length > 0 && textElements.map((element) => {
+          const adjustment = element.individualAdjustments?.[attendees[previewIndex]] || { x: 0, y: 0 };
+          return (
+            <div
+              id={element.id}
+              key={element.id}
+              className="absolute cursor-move"
+              style={{
+                left: `${element.x + adjustment.x}px`,
+                top: `${element.y + adjustment.y}px`,
+                fontSize: `${element.fontSize}px`,
+                fontFamily: CUSTOM_FONTS[element.fontFamily] 
+                  ? element.fontFamily 
+                  : `var(--font-${element.fontFamily.toLowerCase().replace(/ /g, '-')})`,
+                color: element.color,
+                padding: '4px',
+                userSelect: 'none',
+                zIndex: 10,
+                fontWeight: element.fontWeight,
+                fontStyle: element.fontStyle,
+                textDecoration: element.textDecoration,
+                textAlign: element.textAlign,
+                lineHeight: element.lineHeight
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const parentRect = e.currentTarget.parentElement?.getBoundingClientRect();
+                if (!parentRect) return;
+
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const startElementX = element.x + adjustment.x;
+                const startElementY = element.y + adjustment.y;
+
+                const handleMouseMove = (e: MouseEvent) => {
+                  const target = document.getElementById(element.id) as HTMLElement;
+                  if (!target) return;
+                  
+                  // Calculate position relative to parent container
+                  const dx = e.clientX - startX;
+                  const dy = e.clientY - startY;
+                  
+                  // Update the element's position in real-time
+                  target.style.left = `${startElementX + dx}px`;
+                  target.style.top = `${startElementY + dy}px`;
+                };
+
+                const handleMouseUp = (e: MouseEvent) => {
+                  const dx = e.clientX - startX;
+                  const dy = e.clientY - startY;
+                  
+                  // Save the final adjustment
+                  onPreviewAdjustment(element.id, attendees[previewIndex], {
+                    x: dx,
+                    y: dy
+                  });
+
+                  // Clean up event listeners
+                  window.removeEventListener('mousemove', handleMouseMove);
+                  window.removeEventListener('mouseup', handleMouseUp);
+                };
+
+                window.addEventListener('mousemove', handleMouseMove);
+                window.addEventListener('mouseup', handleMouseUp);
+              }}
+            >
+              {element.type === 'name' ? attendees[previewIndex] : element.text}
+            </div>
+          );
+        })}
       </div>
       
       {attendees.length > 0 && textElements.some(el => el.type === 'name') && (

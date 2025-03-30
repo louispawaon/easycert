@@ -28,7 +28,8 @@ export function CertificateDesigner() {
     textElementsCount,
     namePlaceholdersCount,
     generateCertificates,
-    generateCertificatesPDF
+    generateCertificatesPDF,
+    handlePreviewAdjustment
   } = useCertificateDesigner();
 
   return (
@@ -84,6 +85,7 @@ export function CertificateDesigner() {
           <TabsContent value="preview" className="space-y-4">
             <CertificatePreview
               {...certificatePreviewProps}
+              onPreviewAdjustment={handlePreviewAdjustment}
             />
           </TabsContent>
           

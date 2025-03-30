@@ -31,10 +31,14 @@ export async function generateCertificateImage(
   const scaleY = canvas.height / previewDimensions.height;
 
   textElements.forEach((element) => {
+    const text = element.type === 'name' ? name : element.text;
+    const adjustment = element.individualAdjustments?.[name] || { x: 0, y: 0 };
+    const adjustedX = element.x * scaleX + adjustment.x * scaleX;
+    const adjustedY = element.y * scaleY + adjustment.y * scaleY;
+    
     ctx.font = `${element.fontSize * scaleY}px ${element.fontFamily}`;
     ctx.fillStyle = element.color;
-    const text = element.type === 'name' ? name : element.text;
-    ctx.fillText(text, element.x * scaleX, element.y * scaleY);
+    ctx.fillText(text, adjustedX, adjustedY);
   });
 
   return canvas.toDataURL('image/png', 0.9);
