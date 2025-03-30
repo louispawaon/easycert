@@ -1,47 +1,8 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { TextElement } from "@/types/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
-}
-
-export async function generateCertificateImage(
-  name: string,
-  imageUrl: string,
-  textElements: TextElement[],
-  canvas: HTMLCanvasElement,
-  previewDimensions: { width: number; height: number }
-) {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-
-  const img = new Image();
-  img.src = imageUrl;
-  await new Promise((resolve) => (img.onload = resolve));
-
-  const maxDimension = 2000; // Maximum dimension for either width or height
-  const scale = Math.min(maxDimension / img.width, maxDimension / img.height);
-  canvas.width = img.width * scale;
-  canvas.height = img.height * scale;
-  
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-  const scaleX = canvas.width / previewDimensions.width;
-  const scaleY = canvas.height / previewDimensions.height;
-
-  textElements.forEach((element) => {
-    const text = element.type === 'name' ? name : element.text;
-    const adjustment = element.individualAdjustments?.[name] || { x: 0, y: 0 };
-    const adjustedX = element.x * scaleX + adjustment.x * scaleX;
-    const adjustedY = element.y * scaleY + adjustment.y * scaleY;
-    
-    ctx.font = `${element.fontSize * scaleY}px ${element.fontFamily}`;
-    ctx.fillStyle = element.color;
-    ctx.fillText(text, adjustedX, adjustedY);
-  });
-
-  return canvas.toDataURL('image/png', 0.9);
 }
 
 export function addEventListener(event: string, handler: EventListener): void {

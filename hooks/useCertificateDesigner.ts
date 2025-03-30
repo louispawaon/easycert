@@ -132,21 +132,24 @@ export function useCertificateDesigner() {
       const scaleY = canvas.height / 500;
 
       textElements.forEach((element) => {
-        // Set text properties
+        const text = element.type === 'name' ? name : element.text;
+        const adjustment = element.individualAdjustments?.[name] || { x: 0, y: 0 };
+        
+        // Calculate adjusted positions
+        const adjustedX = element.x * scaleX + adjustment.x * scaleX;
+        const adjustedY = element.y * scaleY + adjustment.y * scaleY;
+        
+        // Set font properties
         const fontSize = element.fontSize * scaleY;
         ctx.font = `${element.fontStyle} ${element.fontWeight} ${fontSize}px ${element.fontFamily}`;
         ctx.fillStyle = element.color;
         ctx.textAlign = element.textAlign || 'left';
         
-        // Get the text to render
-        const text = element.type === 'name' ? name : element.text;
+        // Account for text baseline and padding
+        const paddingOffset = 4 * scaleY;
+        const baselineOffset = fontSize;
         
-        // Account for the padding that exists in the preview
-        const paddingOffset = 4 * scaleY; 
-        const x = element.x * scaleX + paddingOffset;
-        const y = (element.y * scaleY) + fontSize + paddingOffset; 
-
-        ctx.fillText(text, x, y);
+        ctx.fillText(text, adjustedX, adjustedY + baselineOffset + paddingOffset);
       });
 
       const dataUrl = canvas.toDataURL('image/png', 1.0);
@@ -288,6 +291,7 @@ export function useCertificateDesigner() {
   }, [attendees, generateCertificateImage]);
 
   const handlePreviewAdjustment = useCallback((elementId: string, attendee: string, adjustment: { x: number; y: number }) => {
+    console.log('Adjustment:', { elementId, attendee, adjustment });
     setTextElements(prev => prev.map(el => 
       el.id === elementId ? {
         ...el,
@@ -316,8 +320,9 @@ export function useCertificateDesigner() {
     textElements,
     onDownload: downloadCertificate,
     onPreviewChange: setPreviewIndex,
-    imageDimensions
-  }), [imageUrl, attendees, previewIndex, textElements, downloadCertificate, imageDimensions]);
+    imageDimensions,
+    onPreviewAdjustment: handlePreviewAdjustment
+  }), [imageUrl, attendees, previewIndex, textElements, downloadCertificate, imageDimensions, handlePreviewAdjustment]);
 
   // Load saved data and set up event listeners
   useEffect(() => {
