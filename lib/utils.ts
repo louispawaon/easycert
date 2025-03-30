@@ -1,5 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { TextElement } from "@/types/types"
+import JSZip from "jszip"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -73,4 +75,114 @@ export async function generatePDF(certificates: string[], filename: string) {
   }
   
   pdf.save(filename);
+}
+
+export async function generateCertificateImage(
+  imageUrl: string,
+  textElements: TextElement[],
+  imageDimensions: { width: number; height: number },
+  name: string
+): Promise<string | null> {
+  try {
+    if (!imageUrl) throw new Error('No certificate template available');
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not get canvas context');
+
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.src = imageUrl;
+
+    await new Promise((resolve, reject) => {
+      img.onload = () => {
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        ctx.drawImage(img, 0, 0);
+        resolve(true);
+      };
+      img.onerror = (err) => {
+        console.error('Image loading error:', err);
+        reject(new Error('Failed to load certificate template'));
+      };
+    });
+
+    const previewWidth = (500 / imageDimensions.height) * imageDimensions.width;
+    const scaleX = canvas.width / previewWidth;
+    const scaleY = canvas.height / 500;
+
+    textElements.forEach((element) => {
+      const text = element.type === 'name' ? name : element.text;
+      const adjustment = element.individualAdjustments?.[name] || { x: 0, y: 0 };
+      
+      const adjustedX = element.x * scaleX + adjustment.x * scaleX;
+      const adjustedY = element.y * scaleY + adjustment.y * scaleY;
+      
+      const fontSize = element.fontSize * scaleY;
+      ctx.font = `${element.fontStyle} ${element.fontWeight} ${fontSize}px ${element.fontFamily}`;
+      ctx.fillStyle = element.color;
+      ctx.textAlign = element.textAlign || 'left';
+      
+      const paddingOffset = 4 * scaleY;
+      const baselineOffset = fontSize;
+      
+      ctx.fillText(text, adjustedX, adjustedY + baselineOffset + paddingOffset);
+    });
+
+    const dataUrl = canvas.toDataURL('image/png', 1.0);
+    if (!dataUrl) throw new Error('Failed to generate image data URL');
+
+    return dataUrl;
+  } catch (error) {
+    console.error('Certificate generation error:', error);
+    throw error;
+  }
+}
+
+export async function generateCertificates(
+  imageUrl: string,
+  attendees: string[],
+  textElements: TextElement[],
+  imageDimensions: { width: number; height: number }
+): Promise<Blob> {
+  if (!imageUrl || attendees.length === 0 || !textElements.some(el => el.type === 'name')) {
+    throw new Error("Missing requirements: template, attendees, and name placeholder");
+  }
+
+  const certificates: string[] = [];
+  for (const attendee of attendees) {
+    const cert = await generateCertificateImage(imageUrl, textElements, imageDimensions, attendee);
+    if (cert) certificates.push(cert);
+  }
+
+  const zip = new JSZip();
+  let completed = 0;
+
+  for (const cert of certificates) {
+    const base64Data = cert.split(',')[1];
+    const binaryString = atob(base64Data);
+    const arrayBuffer = new ArrayBuffer(binaryString.length);
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    for (let i = 0; i < binaryString.length; i++) {
+      uint8Array[i] = binaryString.charCodeAt(i);
+    }
+    
+    zip.file(`certificate_${attendees[completed]}.png`, uint8Array, { 
+      binary: true,
+      compression: 'DEFLATE',
+      compressionOptions: {
+        level: 6
+      }
+    });
+    completed++;
+  }
+
+  return await zip.generateAsync({ 
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: {
+      level: 6
+    }
+  });
 }
