@@ -116,8 +116,8 @@ export function CertificatePreview({
                 const parentRect = e.currentTarget.parentElement?.getBoundingClientRect();
                 if (!parentRect) return;
 
-                const startX = e.clientX;
-                const startY = e.clientY;
+                const startX = e.clientX - parentRect.left;
+                const startY = e.clientY - parentRect.top;
                 const startElementX = element.x + adjustment.x;
                 const startElementY = element.y + adjustment.y;
 
@@ -126,22 +126,22 @@ export function CertificatePreview({
                   if (!target) return;
                   
                   // Calculate position relative to parent container
-                  const dx = e.clientX - startX;
-                  const dy = e.clientY - startY;
+                  const newX = e.clientX - parentRect.left;
+                  const newY = e.clientY - parentRect.top;
                   
                   // Update the element's position in real-time
-                  target.style.left = `${startElementX + dx}px`;
-                  target.style.top = `${startElementY + dy}px`;
+                  target.style.left = `${startElementX + (newX - startX)}px`;
+                  target.style.top = `${startElementY + (newY - startY)}px`;
                 };
 
                 const handleMouseUp = (e: MouseEvent) => {
-                  const dx = e.clientX - startX;
-                  const dy = e.clientY - startY;
+                  const newX = e.clientX - parentRect.left;
+                  const newY = e.clientY - parentRect.top;
                   
                   // Save the final adjustment
                   onPreviewAdjustment(element.id, attendees[previewIndex], {
-                    x: dx,
-                    y: dy
+                    x: adjustment.x + (newX - startX),
+                    y: adjustment.y + (newY - startY)
                   });
 
                   // Clean up event listeners
