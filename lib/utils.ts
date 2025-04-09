@@ -111,6 +111,38 @@ export async function generateCertificateImage(
     const scaleX = canvas.width / previewWidth;
     const scaleY = canvas.height / 500;
 
+    // Helper function to wrap and draw text - moved after ctx check
+    const wrapText = (text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
+      const words = text.split(' ');
+      let line = '';
+      let testLine = '';
+      const lines: string[] = [];
+      
+      // First pass: determine line breaks
+      for (let n = 0; n < words.length; n++) {
+        testLine = line + words[n] + ' ';
+        const metrics = ctx!.measureText(testLine);
+        const testWidth = metrics.width;
+        
+        if (testWidth > maxWidth && n > 0) {
+          lines.push(line);
+          line = words[n] + ' ';
+        } else {
+          line = testLine;
+        }
+      }
+      lines.push(line);
+
+      // Second pass: draw the lines
+      let totalHeight = 0;
+      lines.forEach((line, i) => {
+        ctx!.fillText(line.trim(), x, y + (i * lineHeight));
+        totalHeight = (i + 1) * lineHeight;
+      });
+
+      return totalHeight;
+    };
+
     textElements.forEach((element) => {
       const text = element.type === 'name' ? name : element.text;
       const adjustment = element.individualAdjustments?.[name] || { x: 0, y: 0 };
@@ -125,8 +157,19 @@ export async function generateCertificateImage(
       
       const paddingOffset = 4 * scaleY;
       const baselineOffset = fontSize;
+      const lineHeight = fontSize * (element.lineHeight || 1.2);
       
-      ctx.fillText(text, adjustedX, adjustedY + baselineOffset + paddingOffset);
+      // Calculate max width based on canvas size and position
+      const maxWidth = canvas.width - adjustedX;
+      
+      // Draw the wrapped text
+      wrapText(
+        text,
+        adjustedX,
+        adjustedY + baselineOffset + paddingOffset,
+        maxWidth,
+        lineHeight
+      );
     });
 
     const dataUrl = canvas.toDataURL('image/png', 1.0);
