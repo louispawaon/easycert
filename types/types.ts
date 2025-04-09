@@ -13,6 +13,7 @@ export type TextElement = {
   textDecoration: 'none' | 'underline' | 'line-through';
   textAlign: 'left' | 'center' | 'right';
   lineHeight: number;
+  individualAdjustments?: Record<string, { x: number; y: number }>;
 }; 
 
 export interface ImageDimensions {

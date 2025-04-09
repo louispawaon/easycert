@@ -5,10 +5,11 @@ import { useToast } from "@/hooks/useToast";
 import { TextElement } from "@/types/types";
 import { useAttendees } from "@/hooks/useAttendees";
 import { useCertificateImage } from "@/hooks/useCertificate";
-import JSZip from "jszip";
 import { getLocalStorageItem } from "@/lib/utils";
 import { addEventListener, removeEventListener } from "@/lib/utils";
 import { generatePDF } from "@/lib/utils";
+import { generateCertificateImage as generateCertificateImageUtil } from "@/lib/utils";
+import { generateCertificates as generateCertificatesUtil } from "@/lib/utils";
 
 export function useCertificateDesigner() {
   const { toast } = useToast();
@@ -102,59 +103,17 @@ export function useCertificateDesigner() {
   }, []);
 
   // Certificate generation
-  const generateCertificateImage = useCallback(async (name: string) => {
+  const generateCertificateImage = useCallback(async (name: string): Promise<string | null> => {
     try {
       if (!imageUrl) throw new Error('No certificate template available');
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Could not get canvas context');
-
-      const img = new Image();
-      img.crossOrigin = "Anonymous";
-      img.src = imageUrl;
-
-      await new Promise((resolve, reject) => {
-        img.onload = () => {
-          canvas.width = img.naturalWidth || img.width;
-          canvas.height = img.naturalHeight || img.height;
-          ctx.drawImage(img, 0, 0);
-          resolve(true);
-        };
-        img.onerror = (err) => {
-          console.error('Image loading error:', err);
-          reject(new Error('Failed to load certificate template'));
-        };
-      });
-
-      const previewWidth = (500 / imageDimensions.height) * imageDimensions.width;
-      const scaleX = canvas.width / previewWidth;
-      const scaleY = canvas.height / 500;
-
-      textElements.forEach((element) => {
-        // Set text properties
-        const fontSize = element.fontSize * scaleY;
-        ctx.font = `${element.fontStyle} ${element.fontWeight} ${fontSize}px ${element.fontFamily}`;
-        ctx.fillStyle = element.color;
-        ctx.textAlign = element.textAlign || 'left';
-        
-        // Get the text to render
-        const text = element.type === 'name' ? name : element.text;
-        
-        // Account for the padding that exists in the preview
-        const paddingOffset = 4 * scaleY; 
-        const x = element.x * scaleX + paddingOffset;
-        const y = (element.y * scaleY) + fontSize + paddingOffset; 
-
-        ctx.fillText(text, x, y);
-      });
-
-      const dataUrl = canvas.toDataURL('image/png', 1.0);
-      if (!dataUrl) throw new Error('Failed to generate image data URL');
-
+      const dataUrl = await generateCertificateImageUtil(
+        imageUrl,
+        textElements,
+        imageDimensions,
+        name
+      );
       return dataUrl;
     } catch (error) {
-      console.error('Certificate generation error:', error);
       toast({
         title: "Image generation failed",
         description: error instanceof Error ? error.message : "There was an error generating the certificate image.",
@@ -212,45 +171,13 @@ export function useCertificateDesigner() {
     setIsGenerating(true);
 
     try {
-      const certificates: string[] = [];
-      for (const attendee of attendees) {
-        const cert = await generateCertificateImage(attendee);
-        if (cert) certificates.push(cert);
-      }
-
-      const zip = new JSZip();
-      const total = certificates.length;
-      let completed = 0;
-
-      for (const cert of certificates) {
-        const base64Data = cert.split(',')[1];
-        const binaryString = atob(base64Data);
-        const arrayBuffer = new ArrayBuffer(binaryString.length);
-        const uint8Array = new Uint8Array(arrayBuffer);
-        
-        for (let i = 0; i < binaryString.length; i++) {
-          uint8Array[i] = binaryString.charCodeAt(i);
-        }
-        
-        // Compress images in ZIP
-        zip.file(`certificate_${attendees[completed]}.png`, uint8Array, { 
-          binary: true,
-          compression: 'DEFLATE',
-          compressionOptions: {
-            level: 6 // Medium compression level
-          }
-        });
-        completed++;
-        console.log(`Generated ${completed} of ${total} certificates`);
-      }
-
-      const content = await zip.generateAsync({ 
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: {
-          level: 6
-        }
-      });
+      const content = await generateCertificatesUtil(
+        imageUrl,
+        attendees,
+        textElements,
+        imageDimensions
+      );
+      
       const link = document.createElement('a');
       link.href = URL.createObjectURL(content);
       link.download = 'certificates.zip';
@@ -260,18 +187,18 @@ export function useCertificateDesigner() {
 
       toast({
         title: "Certificates generated",
-        description: `Successfully generated ${total} certificates.`,
+        description: `Successfully generated ${attendees.length} certificates.`,
       });
-    } catch {
+    } catch (error) {
       toast({
         title: "Error generating certificates",
-        description: "There was an error generating the certificates.",
+        description: error instanceof Error ? error.message : "There was an error generating the certificates.",
         variant: "destructive",
       });
     } finally {
       setIsGenerating(false);
     }
-  }, [imageUrl, attendees, textElements, generateCertificateImage, toast]);
+  }, [imageUrl, attendees, textElements, imageDimensions, toast]);
 
   const generateCertificatesPDF = useCallback(async () => {
     setIsGenerating(true);
@@ -286,6 +213,19 @@ export function useCertificateDesigner() {
       setIsGenerating(false);
     }
   }, [attendees, generateCertificateImage]);
+
+  const handlePreviewAdjustment = useCallback((elementId: string, attendee: string, adjustment: { x: number; y: number }) => {
+    console.log('Adjustment:', { elementId, attendee, adjustment });
+    setTextElements(prev => prev.map(el => 
+      el.id === elementId ? {
+        ...el,
+        individualAdjustments: {
+          ...el.individualAdjustments,
+          [attendee]: adjustment
+        }
+      } : el
+    ));
+  }, []);
 
   // Memoize component props
   const canvasPreviewProps = useMemo(() => ({
@@ -304,8 +244,9 @@ export function useCertificateDesigner() {
     textElements,
     onDownload: downloadCertificate,
     onPreviewChange: setPreviewIndex,
-    imageDimensions
-  }), [imageUrl, attendees, previewIndex, textElements, downloadCertificate, imageDimensions]);
+    imageDimensions,
+    onPreviewAdjustment: handlePreviewAdjustment
+  }), [imageUrl, attendees, previewIndex, textElements, downloadCertificate, imageDimensions, handlePreviewAdjustment]);
 
   // Load saved data and set up event listeners
   useEffect(() => {
@@ -380,6 +321,7 @@ export function useCertificateDesigner() {
     certificatePreviewProps,
     attendeesCount,
     textElementsCount,
-    namePlaceholdersCount
+    namePlaceholdersCount,
+    handlePreviewAdjustment
   };
 }
