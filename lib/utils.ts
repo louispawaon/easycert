@@ -172,7 +172,7 @@ export async function generateCertificateImage(
       );
     });
 
-    const dataUrl = canvas.toDataURL('image/png', 1.0);
+    const dataUrl = canvas.toDataURL('image/png', 0.8);
     if (!dataUrl) throw new Error('Failed to generate image data URL');
 
     return dataUrl;
