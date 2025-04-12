@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Trash2 } from "lucide-react";
+import { Trash2, Save } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Bold, Italic, Underline } from "lucide-react";
 import { getFontOptions } from '@/lib/fonts';
@@ -14,6 +14,19 @@ import { useFontLoader } from '@/hooks/useFontLoader';
 import { useFontUpload } from '@/hooks/useFontUpload';
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/useToast";
+
+interface TextProperties {
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  fontWeight: 'normal' | 'bold' | 'lighter';
+  fontStyle: string;
+  textDecoration: string;
+  textAlign: string;
+  lineHeight: number;
+}
 
 interface TextElementEditorProps {
   element: TextElement;
@@ -22,6 +35,8 @@ interface TextElementEditorProps {
 }
 
 export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEditorProps) {
+  const { toast } = useToast();
+  const [presetName, setPresetName] = useState('');
   const {
     fontFile,
     setFontFile,
@@ -31,13 +46,87 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
 
   useFontLoader(element.fontFamily);
 
+  const extractTextProperties = (element: TextElement): TextProperties => {
+    return {
+      fontSize: element.fontSize,
+      fontFamily: element.fontFamily,
+      color: element.color,
+      fontWeight: typeof element.fontWeight === 'number' ? 'normal' : element.fontWeight,
+      fontStyle: element.fontStyle,
+      textDecoration: element.textDecoration,
+      textAlign: element.textAlign,
+      lineHeight: element.lineHeight,
+    };
+  };
+
+  const savePreset = async () => {
+    try {
+      const preset = {
+        name: presetName,
+        properties: extractTextProperties(element),
+        createdAt: new Date().toISOString(),
+      };
+
+      const blob = new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${presetName.toLowerCase().replace(/\s+/g, '-')}-preset.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: "Preset has been saved successfully!",
+      });
+
+      setPresetName('');
+    } catch (error) {
+      console.error('Error saving preset:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save preset. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="border rounded-md p-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">Element Properties</h3>
-        <Button variant="destructive" size="icon" onClick={onRemove}>
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-2">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="icon" title="Save as Preset">
+                <Save className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Save Preset</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col gap-4">
+                <Input
+                  placeholder="Enter preset name"
+                  value={presetName}
+                  onChange={(e) => setPresetName(e.target.value)}
+                />
+                <Button 
+                  onClick={savePreset}
+                  disabled={!presetName.trim()}
+                >
+                  Save Preset
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Button variant="destructive" size="icon" onClick={onRemove} title="Remove Element">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       
       {element.type === 'static' && (

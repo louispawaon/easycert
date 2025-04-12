@@ -11,6 +11,17 @@ import { generatePDF } from "@/lib/utils";
 import { generateCertificateImage as generateCertificateImageUtil } from "@/lib/utils";
 import { generateCertificates as generateCertificatesUtil } from "@/lib/utils";
 
+interface TextProperties {
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  fontWeight: 'normal' | 'bold' | 'lighter';
+  fontStyle: string;
+  textDecoration: string;
+  textAlign: string;
+  lineHeight: number;
+}
+
 export function useCertificateDesigner() {
   const { toast } = useToast();
   const { imageUrl, setImageUrl } = useCertificateImage();
@@ -152,7 +163,7 @@ export function useCertificateDesigner() {
       console.error('Download error:', error);
       toast({
         title: "Download failed",
-        description: "There was an error downloading the certificate.",
+        description: error instanceof Error ? error.message : "There was an error downloading the certificate.",
         variant: "destructive",
       });
     }
@@ -226,6 +237,14 @@ export function useCertificateDesigner() {
       } : el
     ));
   }, []);
+
+  const loadPreset = useCallback((properties: TextProperties) => {
+    if (selectedElement) {
+      Object.entries(properties).forEach(([key, value]) => {
+        handleElementUpdate(key as keyof TextElement, value);
+      });
+    }
+  }, [selectedElement, handleElementUpdate]);
 
   // Memoize component props
   const canvasPreviewProps = useMemo(() => ({
@@ -322,6 +341,7 @@ export function useCertificateDesigner() {
     attendeesCount,
     textElementsCount,
     namePlaceholdersCount,
-    handlePreviewAdjustment
+    handlePreviewAdjustment,
+    loadPreset,
   };
 }
