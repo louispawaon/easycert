@@ -1,10 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Plus, Upload } from "lucide-react";
+import { Plus, Upload, Loader2 } from "lucide-react";
 import { TextElement } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/useToast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState } from "react";
 
 interface TextProperties {
   fontSize: number;
@@ -29,12 +31,15 @@ export function CertificateControls({
   onLoadPreset 
 }: CertificateControlsProps) {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const loadPreset = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const file = e.target.files?.[0];
       if (!file) return;
 
+      setIsLoading(true);
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
@@ -46,6 +51,10 @@ export function CertificateControls({
             title: "Success",
             description: `Preset "${preset.name}" loaded successfully!`,
           });
+
+          // Reset the file input and close dialog
+          e.target.value = '';
+          setDialogOpen(false);
         } catch (error) {
           console.error('Error parsing preset:', error);
           toast({
@@ -53,6 +62,8 @@ export function CertificateControls({
             description: "Invalid preset file format.",
             variant: "destructive",
           });
+        } finally {
+          setIsLoading(false);
         }
       };
       reader.readAsText(file);
@@ -63,6 +74,7 @@ export function CertificateControls({
         description: "Failed to load preset. Please try again.",
         variant: "destructive",
       });
+      setIsLoading(false);
     }
   };
 
@@ -91,29 +103,41 @@ export function CertificateControls({
 
         {textElements.length > 0 && (
           <div className="pt-2 border-t">
-            <div className="flex items-center gap-2">
-              <Input
-                type="file"
-                accept=".json"
-                onChange={loadPreset}
-                className="flex-1"
-                placeholder="Load Preset"
-              />
-              <Button variant="outline" size="icon" asChild>
-                <label>
-                  <Upload className="h-4 w-4" />
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={loadPreset}
-                    className="hidden"
-                  />
-                </label>
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              Load a preset to apply styles to selected text
-            </p>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Load Preset
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Load Preset</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid w-full max-w-sm items-center gap-1.5">
+                    <div className="relative">
+                      <Input
+                        id="preset-file"
+                        type="file"
+                        accept=".json"
+                        onChange={loadPreset}
+                        className="cursor-pointer"
+                        disabled={isLoading}
+                      />
+                      {isLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Choose a preset file to apply its properties to the selected text
+                    </p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </div>
