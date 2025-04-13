@@ -37,6 +37,7 @@ interface TextElementEditorProps {
 export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEditorProps) {
   const { toast } = useToast();
   const [presetName, setPresetName] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
   const {
     fontFile,
     setFontFile,
@@ -83,6 +84,7 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
       });
 
       setPresetName('');
+      setDialogOpen(false);
     } catch (error) {
       console.error('Error saving preset:', error);
       toast({
@@ -98,7 +100,7 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">Element Properties</h3>
         <div className="flex gap-2">
-          <Dialog>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="icon" title="Save as Preset">
                 <Save className="h-4 w-4" />

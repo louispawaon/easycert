@@ -23,12 +23,14 @@ interface CertificateControlsProps {
   onAddTextElement: (type: 'name' | 'static') => void;
   textElements: TextElement[];
   onLoadPreset: (properties: TextProperties) => void;
+  imageUrl: string | null;
 }
 
 export function CertificateControls({ 
   onAddTextElement, 
   textElements,
-  onLoadPreset 
+  onLoadPreset,
+  imageUrl 
 }: CertificateControlsProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -87,6 +89,7 @@ export function CertificateControls({
             onClick={() => onAddTextElement('name')} 
             className="w-full justify-start"
             variant="outline"
+            disabled={!imageUrl}
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Name Placeholder
@@ -95,6 +98,7 @@ export function CertificateControls({
             onClick={() => onAddTextElement('static')} 
             className="w-full justify-start"
             variant="outline"
+            disabled={!imageUrl}
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Static Text

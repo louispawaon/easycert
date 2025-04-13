@@ -73,6 +73,7 @@ export function CertificateDesigner() {
                 <CertificateControls 
                   onAddTextElement={handleAddTextElement}
                   textElements={textElements}
+                  imageUrl={imageUrl}
                   onLoadPreset={(properties) => {
                     if (selectedElement) {
                       const element = textElements.find(el => el.id === selectedElement);
