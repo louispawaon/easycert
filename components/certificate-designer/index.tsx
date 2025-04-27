@@ -9,6 +9,7 @@ import { TextElementEditor } from "@/components/certificate-designer/TextElement
 import { CertificateControls } from "@/components/certificate-designer/CertificateControls";
 import { CertificatePreview } from "@/components/certificate-designer/CertificatePreview";
 import { CertificateGenerator } from "@/components/certificate-designer/CertificateGenerator";
+import { TextElement } from "@/types/types";
 
 export function CertificateDesigner() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -29,7 +30,7 @@ export function CertificateDesigner() {
     namePlaceholdersCount,
     generateCertificates,
     generateCertificatesPDF,
-    handlePreviewAdjustment
+    handlePreviewAdjustment,
   } = useCertificateDesigner();
 
   return (
@@ -69,7 +70,23 @@ export function CertificateDesigner() {
               </div>
               
               <div className="md:w-1/4 space-y-4">
-                <CertificateControls onAddTextElement={handleAddTextElement} />
+                <CertificateControls 
+                  onAddTextElement={handleAddTextElement}
+                  textElements={textElements}
+                  imageUrl={imageUrl}
+                  onLoadPreset={(properties) => {
+                    if (selectedElement) {
+                      const element = textElements.find(el => el.id === selectedElement);
+                      if (element) {
+                        Object.entries(properties).forEach(([key, value]) => {
+                          if (key in element) {
+                            handleElementUpdate(key as keyof TextElement, value);
+                          }
+                        });
+                      }
+                    }
+                  }}
+                />
                 
                 {selectedElement && (
                   <TextElementEditor
