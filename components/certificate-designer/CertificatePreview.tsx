@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import Image from 'next/image';
 import { useFontLoader } from '@/hooks/useFontLoader';
-import { CUSTOM_FONTS } from '@/lib/fonts';
+import { getCustomFonts } from '@/lib/fonts';
 
 interface CertificatePreviewProps {
   imageUrl: string | null;
@@ -96,9 +96,12 @@ export function CertificatePreview({
                 left: `${element.x + adjustment.x}px`,
                 top: `${element.y + adjustment.y}px`,
                 fontSize: `${element.fontSize}px`,
-                fontFamily: CUSTOM_FONTS[element.fontFamily] 
-                  ? element.fontFamily 
-                  : `var(--font-${element.fontFamily.toLowerCase().replace(/ /g, '-')})`,
+                fontFamily: (() => {
+                  const customFonts = getCustomFonts();
+                  return customFonts[element.fontFamily] 
+                    ? element.fontFamily 
+                    : `var(--font-${element.fontFamily.toLowerCase().replace(/ /g, '-')})`;
+                })(),
                 color: element.color,
                 padding: '4px',
                 userSelect: 'none',

@@ -2,7 +2,7 @@
 
 import { TextElement } from "@/types/types";
 import Image from 'next/image';
-import { CUSTOM_FONTS } from '@/lib/fonts';
+import { getCustomFonts } from '@/lib/fonts';
 import { useFontLoader } from '@/hooks/useFontLoader';
 
 interface CanvasPreviewProps {
@@ -72,9 +72,12 @@ export function CanvasPreview({
               left: `${element.x}px`,
               top: `${element.y}px`,
               fontSize: `${element.fontSize}px`,
-              fontFamily: CUSTOM_FONTS[element.fontFamily] 
-                ? element.fontFamily 
-                : `var(--font-${element.fontFamily.toLowerCase().replace(/ /g, '-')})`,
+              fontFamily: (() => {
+                const customFonts = getCustomFonts();
+                return customFonts[element.fontFamily] 
+                  ? element.fontFamily 
+                  : `var(--font-${element.fontFamily.toLowerCase().replace(/ /g, '-')})`;
+              })(),
               color: element.color,
               padding: '4px',
               userSelect: 'none',
