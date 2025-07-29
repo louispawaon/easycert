@@ -225,6 +225,171 @@ export function useCertificateDesigner() {
     }
   }, [attendees, generateCertificateImage]);
 
+  const printCertificates = useCallback(async () => {
+    if (!imageUrl || attendees.length === 0 || !textElements.some(el => el.type === 'name')) {
+      toast({
+        title: "Missing requirements",
+        description: "Please ensure you have a template, attendees, and at least one name placeholder.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const certificates: string[] = [];
+      for (const attendee of attendees) {
+        const cert = await generateCertificateImage(attendee);
+        if (cert) certificates.push(cert);
+      }
+      
+      // Ensure we have certificates to print
+      if (certificates.length === 0) {
+        toast({
+          title: "No certificates generated",
+          description: "Failed to generate certificates for printing.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Create a new window for printing
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast({
+          title: "Print failed",
+          description: "Please allow pop-ups to print certificates.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create HTML content for printing
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Certificates</title>
+          <style>
+            * {
+              box-sizing: border-box;
+            }
+            @page {
+              size: A4 landscape;
+              margin: 0;
+            }
+            body { 
+              margin: 0; 
+              padding: 0; 
+              background: white;
+              font-family: Arial, sans-serif;
+            }
+            .certificate { 
+              page-break-after: always; 
+              text-align: center; 
+              margin: 0;
+              padding: 0;
+              width: 100%;
+              height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              overflow: hidden;
+            }
+            .certificate:last-child { page-break-after: avoid; }
+            img { 
+              max-width: 100%; 
+              max-height: 100vh;
+              height: auto;
+              width: auto;
+              object-fit: contain;
+              display: block;
+            }
+            @media print {
+              body { 
+                padding: 0; 
+                margin: 0;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+              }
+              .certificate { 
+                margin: 0; 
+                padding: 0;
+                page-break-inside: avoid;
+                break-inside: avoid;
+              }
+              /* Remove browser headers and footers */
+              @page {
+                margin: 0;
+                size: A4 landscape;
+              }
+              /* Hide any potential browser UI elements */
+              html, body {
+                -webkit-appearance: none;
+                appearance: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${certificates.map((cert, index) => `
+            <div class="certificate">
+              <img src="${cert}" alt="Certificate for ${attendees[index]}" />
+            </div>
+          `).join('')}
+        </body>
+        </html>
+      `;
+
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      // Wait for images to load before printing
+      const images = printWindow.document.querySelectorAll('img');
+      let loadedImages = 0;
+      
+      const checkAllImagesLoaded = () => {
+        loadedImages++;
+        if (loadedImages === images.length) {
+          setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+          }, 1000);
+        }
+      };
+      
+      images.forEach(img => {
+        if (img.complete) {
+          checkAllImagesLoaded();
+        } else {
+          img.onload = checkAllImagesLoaded;
+          img.onerror = checkAllImagesLoaded; // Continue even if some images fail
+        }
+      });
+      
+      // Fallback if no images or all images are already loaded
+      if (images.length === 0) {
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 1000);
+      }
+
+      toast({
+        title: "Print dialog opened",
+        description: `Ready to print ${attendees.length} certificates.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Print failed",
+        description: error instanceof Error ? error.message : "There was an error preparing certificates for printing.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [imageUrl, attendees, textElements, generateCertificateImage, toast]);
+
   const handlePreviewAdjustment = useCallback((elementId: string, attendee: string, adjustment: { x: number; y: number }) => {
     console.log('Adjustment:', { elementId, attendee, adjustment });
     setTextElements(prev => prev.map(el => 
@@ -336,6 +501,7 @@ export function useCertificateDesigner() {
     downloadCertificate,
     generateCertificates,
     generateCertificatesPDF,
+    printCertificates,
     canvasPreviewProps,
     certificatePreviewProps,
     attendeesCount,

@@ -144,7 +144,6 @@ export async function generateCertificateImage(
     };
 
     textElements.forEach((element) => {
-      const text = element.type === 'name' ? name : element.text;
       const adjustment = element.individualAdjustments?.[name] || { x: 0, y: 0 };
       
       const adjustedX = element.x * scaleX + adjustment.x * scaleX;
@@ -162,14 +161,27 @@ export async function generateCertificateImage(
       // Calculate max width based on canvas size and position
       const maxWidth = canvas.width - adjustedX;
       
-      // Draw the wrapped text
-      wrapText(
-        text,
-        adjustedX,
-        adjustedY + baselineOffset + paddingOffset,
-        maxWidth,
-        lineHeight
-      );
+      // For name placeholders, only draw if we have a valid name
+      if (element.type === 'name') {
+        if (name && name.trim()) {
+          wrapText(
+            name,
+            adjustedX,
+            adjustedY + baselineOffset + paddingOffset,
+            maxWidth,
+            lineHeight
+          );
+        }
+      } else {
+        // For regular text elements, always render them
+        wrapText(
+          element.text,
+          adjustedX,
+          adjustedY + baselineOffset + paddingOffset,
+          maxWidth,
+          lineHeight
+        );
+      }
     });
 
     const dataUrl = canvas.toDataURL('image/png', 0.8);
