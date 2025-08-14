@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 
 interface CertificateGeneratorProps {
   imageUrl: string | null;
@@ -13,6 +13,7 @@ interface CertificateGeneratorProps {
   isGenerating: boolean;
   onGenerate: () => void;
   onGeneratePDF: () => void;
+  onPrint: () => void;
 }
 
 export function CertificateGenerator({
@@ -22,7 +23,8 @@ export function CertificateGenerator({
   namePlaceholdersCount,
   isGenerating,
   onGenerate,
-  onGeneratePDF
+  onGeneratePDF,
+  onPrint
 }: CertificateGeneratorProps) {
   return (
     <div className="space-y-4">
@@ -63,11 +65,12 @@ export function CertificateGenerator({
         </div>
       </div>
       
-      <div className="flex justify-between gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <Button 
           onClick={onGenerate}
           disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
           variant="outline"
+          className="flex-1"
         >
           {isGenerating ? (
             <>
@@ -84,9 +87,19 @@ export function CertificateGenerator({
         <Button 
           onClick={onGeneratePDF}
           disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
+          className="flex-1"
         >
           <Download className="mr-2 h-4 w-4" />
           Generate PDF
+        </Button>
+        <Button 
+          onClick={onPrint}
+          disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
+          variant="secondary"
+          className="flex-1"
+        >
+          <Printer className="mr-2 h-4 w-4" />
+          Print Certificates
         </Button>
       </div>
     </div>

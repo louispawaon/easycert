@@ -30,6 +30,7 @@ export function CertificateDesigner() {
     namePlaceholdersCount,
     generateCertificates,
     generateCertificatesPDF,
+    printCertificates,
     handlePreviewAdjustment,
   } = useCertificateDesigner();
 
@@ -123,6 +124,7 @@ export function CertificateDesigner() {
                   isGenerating={isGenerating}
                   onGenerate={generateCertificates}
                   onGeneratePDF={generateCertificatesPDF}
+                  onPrint={printCertificates}
                 />
               </CardContent>
             </Card>
