@@ -49,17 +49,108 @@ const getLocalStorageItem = (key: string): string | null => {
   return null;
 };
 
-// Add custom fonts storage
-export const CUSTOM_FONTS: Record<string, string> = JSON.parse(
-  getLocalStorageItem('customFonts') || '{}'
-);
+// Helper function to safely set localStorage
+const setLocalStorageItem = (key: string, value: string): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(key, value);
+  }
+};
+
+// Function to get custom fonts from localStorage
+export function getCustomFonts(): Record<string, string> {
+  try {
+    const customFontsData = getLocalStorageItem('customFonts');
+    if (!customFontsData) return {};
+    
+    const customFonts = JSON.parse(customFontsData);
+    
+    // Validate blob URLs and remove invalid ones
+    const validFonts: Record<string, string> = {};
+    const invalidFonts: string[] = [];
+    
+    Object.entries(customFonts).forEach(([name, url]) => {
+      if (typeof url === 'string' && url.startsWith('blob:')) {
+        // For blob URLs, we'll keep them but they might be invalid
+        // The font loader will handle the error gracefully
+        validFonts[name] = url;
+      } else if (typeof url === 'string') {
+        // Non-blob URLs are considered valid
+        validFonts[name] = url;
+      }
+    });
+    
+    // If we found invalid fonts, update localStorage
+    if (invalidFonts.length > 0) {
+      const updatedFonts = { ...validFonts };
+      setLocalStorageItem('customFonts', JSON.stringify(updatedFonts));
+    }
+    
+    return validFonts;
+  } catch (error) {
+    console.error('Error parsing custom fonts from localStorage:', error);
+    return {};
+  }
+}
+
+// Function to clean up invalid blob URLs from localStorage
+export function cleanupInvalidFonts(): void {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const customFontsData = localStorage.getItem('customFonts');
+    if (!customFontsData) return;
+    
+    const customFonts = JSON.parse(customFontsData);
+    const validFonts: Record<string, string> = {};
+    let hasChanges = false;
+    
+    Object.entries(customFonts).forEach(([name, url]) => {
+      if (typeof url === 'string' && !url.startsWith('blob:')) {
+        // Keep non-blob URLs (like base64 data URLs)
+        validFonts[name] = url;
+      } else if (typeof url === 'string' && url.startsWith('blob:')) {
+        // Remove blob URLs as they're likely invalid
+        hasChanges = true;
+        console.warn(`Removing invalid blob URL for font: ${name}`);
+      }
+    });
+    
+    if (hasChanges) {
+      localStorage.setItem('customFonts', JSON.stringify(validFonts));
+      console.log('Cleaned up invalid font URLs from localStorage');
+    }
+  } catch (error) {
+    console.error('Error cleaning up invalid fonts:', error);
+  }
+}
+
+// Clean up invalid fonts on module load
+if (typeof window !== 'undefined') {
+  cleanupInvalidFonts();
+}
+
+// Legacy CUSTOM_FONTS export for backward compatibility
+// This will be deprecated in favor of getCustomFonts()
+export const CUSTOM_FONTS: Record<string, string> = getCustomFonts();
 
 export function addCustomFont(name: string, fontUrl: string) {
-  CUSTOM_FONTS[name] = fontUrl;
+  const customFonts = getCustomFonts();
+  customFonts[name] = fontUrl;
+  
   if (typeof window !== 'undefined') {
-    localStorage.setItem('customFonts', JSON.stringify(CUSTOM_FONTS));
+    localStorage.setItem('customFonts', JSON.stringify(customFonts));
   }
+  
   return { variable: `--font-custom-${name.toLowerCase().replace(/ /g, '-')}` };
+}
+
+export function removeCustomFont(name: string) {
+  const customFonts = getCustomFonts();
+  delete customFonts[name];
+  
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('customFonts', JSON.stringify(customFonts));
+  }
 }
 
 export function getFontOptions() {
@@ -74,7 +165,8 @@ export function getFontOptions() {
       }))
   ];
 
-  const customOptions = Object.keys(CUSTOM_FONTS).map((key) => ({
+  const customFonts = getCustomFonts();
+  const customOptions = Object.keys(customFonts).map((key) => ({
     label: key,
     value: key
   }));

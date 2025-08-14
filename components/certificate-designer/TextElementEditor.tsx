@@ -12,10 +12,11 @@ import { Bold, Italic, Underline } from "lucide-react";
 import { getFontOptions } from '@/lib/fonts';
 import { useFontLoader } from '@/hooks/useFontLoader';
 import { useFontUpload } from '@/hooks/useFontUpload';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/useToast";
+import { getCustomFonts } from '@/lib/fonts';
 
 interface TextProperties {
   fontSize: number;
@@ -46,6 +47,22 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
   const [showFontUpload, setShowFontUpload] = useState(false);
 
   useFontLoader(element.fontFamily);
+
+  // Check for invalid fonts and notify user
+  useEffect(() => {
+    const customFonts = getCustomFonts();
+    const blobFonts = Object.entries(customFonts).filter(([, url]) => 
+      typeof url === 'string' && url.startsWith('blob:')
+    );
+    
+    if (blobFonts.length > 0) {
+      toast({
+        title: "Font Update Required",
+        description: "Some custom fonts need to be re-uploaded due to browser session changes. Please re-upload your custom fonts.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
 
   const extractTextProperties = (element: TextElement): TextProperties => {
     return {
