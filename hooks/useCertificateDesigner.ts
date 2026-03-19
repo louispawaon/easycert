@@ -7,7 +7,7 @@ import { useAttendees } from "@/hooks/useAttendees";
 import { useCertificateImage } from "@/hooks/useCertificate";
 import { getLocalStorageItem } from "@/lib/utils";
 import { addEventListener, removeEventListener } from "@/lib/utils";
-import { generatePDF } from "@/lib/utils";
+import { generatePDF } from "@/lib/pdf";
 import { generateCertificateImage as generateCertificateImageUtil } from "@/lib/utils";
 import { generateCertificates as generateCertificatesUtil } from "@/lib/utils";
 
