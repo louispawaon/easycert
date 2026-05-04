@@ -7,18 +7,21 @@ import { Analytics } from "@vercel/analytics/react"
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://easycert.vercel.app/'),
-  title: 'EasyCert - Certificate Generation Made Easy',
-  description: 'Automate your certificate generation process with EasyCert',
+  title: {
+    default: 'EasyCert',
+    template: '%s | EasyCert',
+  },
+  description: 'Create and distribute personalized certificates at scale.',
   openGraph: {
-    title: 'EasyCert - Certificate Generation Made Easy',
-    description: 'Automate your certificate generation process with EasyCert',
+    title: 'EasyCert',
+    description: 'Create and distribute personalized certificates at scale.',
     siteName: 'EasyCert',
     images: [
       {
         url: '/opengraph-image.png',
         width: 1200,
         height: 630,
-        alt: 'EasyCert - Certificate Generation Made Easy',
+        alt: 'EasyCert',
       },
     ],
     locale: 'en_US',
@@ -26,8 +29,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EasyCert - Certificate Generation Made Easy',
-    description: 'Automate your certificate generation process with EasyCert',
+    title: 'EasyCert',
+    description: 'Create and distribute personalized certificates at scale.',
     images: ['/opengraph-image.png'],
   },
 };

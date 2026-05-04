@@ -3,7 +3,7 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy - EasyCert',
+  title: 'Privacy Policy',
   description: 'Learn how EasyCert collects, uses, and protects your data.',
 };
 
