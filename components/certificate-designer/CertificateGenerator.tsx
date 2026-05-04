@@ -3,7 +3,15 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Download, Printer } from "lucide-react";
+import { PAGE_SIZE_OPTIONS, type PageSizeId } from "@/lib/page-size";
 
 interface CertificateGeneratorProps {
   imageUrl: string | null;
@@ -11,6 +19,8 @@ interface CertificateGeneratorProps {
   textElementsCount: number;
   namePlaceholdersCount: number;
   isGenerating: boolean;
+  pageSize: PageSizeId;
+  onPageSizeChange: (pageSize: PageSizeId) => void;
   onGenerate: () => void;
   onGeneratePDF: () => void;
   onPrint: () => void;
@@ -22,10 +32,14 @@ export function CertificateGenerator({
   textElementsCount,
   namePlaceholdersCount,
   isGenerating,
+  pageSize,
+  onPageSizeChange,
   onGenerate,
   onGeneratePDF,
-  onPrint
+  onPrint,
 }: CertificateGeneratorProps) {
+  const activeOption = PAGE_SIZE_OPTIONS.find((o) => o.id === pageSize);
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -48,9 +62,9 @@ export function CertificateGenerator({
           </span>
         </div>
       </div>
-      
+
       <div className="space-y-2 border-t pt-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div className="space-y-0.5">
             <Label htmlFor="filename">Output Filename</Label>
             <p className="text-sm text-muted-foreground">
@@ -64,9 +78,32 @@ export function CertificateGenerator({
           />
         </div>
       </div>
-      
+
+      <div className="space-y-2 border-t pt-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-0.5">
+            <Label htmlFor="page-size">Page Size (PDF &amp; Print)</Label>
+            <p className="text-sm text-muted-foreground">
+              {activeOption?.description ?? "Page size for PDF and Print output."}
+            </p>
+          </div>
+          <Select value={pageSize} onValueChange={(v) => onPageSizeChange(v as PageSizeId)}>
+            <SelectTrigger id="page-size" className="w-[220px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-2">
-        <Button 
+        <Button
           onClick={onGenerate}
           disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
           variant="outline"
@@ -84,7 +121,7 @@ export function CertificateGenerator({
             </>
           )}
         </Button>
-        <Button 
+        <Button
           onClick={onGeneratePDF}
           disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
           className="flex-1"
@@ -92,7 +129,7 @@ export function CertificateGenerator({
           <Download className="mr-2 h-4 w-4" />
           Generate PDF
         </Button>
-        <Button 
+        <Button
           onClick={onPrint}
           disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
           variant="secondary"
@@ -104,4 +141,4 @@ export function CertificateGenerator({
       </div>
     </div>
   );
-} 
+}

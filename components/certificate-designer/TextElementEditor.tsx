@@ -6,33 +6,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Trash2, Save } from "lucide-react";
+import { Trash2, Save, Bold, ChevronDown, ChevronUp } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
-import { Bold, Italic, Underline } from "lucide-react";
 import { getFontOptions } from '@/lib/fonts';
 import { useFontLoader } from '@/hooks/useFontLoader';
 import { useFontUpload } from '@/hooks/useFontUpload';
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/useToast";
 import { getCustomFonts } from '@/lib/fonts';
-
-interface TextProperties {
-  fontSize: number;
-  fontFamily: string;
-  color: string;
-  fontWeight: 'normal' | 'bold' | 'lighter';
-  fontStyle: string;
-  textDecoration: string;
-  textAlign: string;
-  lineHeight: number;
-}
+import type { TextProperties } from "@/hooks/useCertificateDesigner";
 
 interface TextElementEditorProps {
   element: TextElement;
   onUpdate: (property: keyof TextElement, value: string | number) => void;
   onRemove: () => void;
+}
+
+/** One-shot guard: the blob-font warning should surface at most once per page session, regardless of editor mounts. */
+let blobFontWarningShown = false;
+
+function clampPct(value: number, min = 0, max = 1): number {
+  if (Number.isNaN(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function pctToDisplay(value: number): string {
+  return (value * 100).toFixed(1);
 }
 
 export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEditorProps) {
@@ -48,34 +48,28 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
 
   useFontLoader(element.fontFamily);
 
-  // Check for invalid fonts and notify user
   useEffect(() => {
+    if (blobFontWarningShown) return;
     const customFonts = getCustomFonts();
-    const blobFonts = Object.entries(customFonts).filter(([, url]) => 
-      typeof url === 'string' && url.startsWith('blob:')
+    const hasBlobFont = Object.values(customFonts).some(
+      (url) => typeof url === 'string' && url.startsWith('blob:')
     );
-    
-    if (blobFonts.length > 0) {
-      toast({
-        title: "Font Update Required",
-        description: "Some custom fonts need to be re-uploaded due to browser session changes. Please re-upload your custom fonts.",
-        variant: "destructive",
-      });
-    }
+    if (!hasBlobFont) return;
+    blobFontWarningShown = true;
+    toast({
+      title: "Font Update Required",
+      description: "Some custom fonts need to be re-uploaded due to browser session changes. Please re-upload your custom fonts.",
+      variant: "destructive",
+    });
   }, [toast]);
 
-  const extractTextProperties = (element: TextElement): TextProperties => {
-    return {
-      fontSize: element.fontSize,
-      fontFamily: element.fontFamily,
-      color: element.color,
-      fontWeight: typeof element.fontWeight === 'number' ? 'normal' : element.fontWeight,
-      fontStyle: element.fontStyle,
-      textDecoration: element.textDecoration,
-      textAlign: element.textAlign,
-      lineHeight: element.lineHeight,
-    };
-  };
+  const extractTextProperties = (el: TextElement): TextProperties => ({
+    fontSize: el.fontSize,
+    fontFamily: el.fontFamily,
+    color: el.color,
+    fontWeight: el.fontWeight,
+    maxWidthPct: el.maxWidthPct,
+  });
 
   const savePreset = async () => {
     try {
@@ -112,6 +106,9 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
     }
   };
 
+  const xPctDisplay = pctToDisplay(element.x);
+  const yPctDisplay = pctToDisplay(element.y);
+
   return (
     <div className="border rounded-md p-4">
       <div className="flex justify-between items-center mb-4">
@@ -133,7 +130,7 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
                   value={presetName}
                   onChange={(e) => setPresetName(e.target.value)}
                 />
-                <Button 
+                <Button
                   onClick={savePreset}
                   disabled={!presetName.trim()}
                 >
@@ -147,22 +144,22 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
           </Button>
         </div>
       </div>
-      
+
       {element.type === 'static' && (
         <div className="space-y-2 mb-4">
           <Label htmlFor="text-content">Text Content</Label>
           <Input
             id="text-content"
-            value={element.text}
-            onChange={(e) => onUpdate('text', e.target.value)}
+            value={element.value ?? ''}
+            onChange={(e) => onUpdate('value', e.target.value)}
           />
         </div>
       )}
-      
+
       <div className="space-y-4">
         <div className="space-y-2">
           <Label className="flex items-center gap-2">Font Settings</Label>
-          
+
           <div className="space-y-2">
             <Button
               variant="outline"
@@ -181,7 +178,7 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
                     accept=".ttf,.otf,.woff,.woff2"
                     onChange={(e) => e.target.files && setFontFile(e.target.files[0])}
                   />
-                  <Button 
+                  <Button
                     onClick={handleFontUpload}
                     disabled={!fontFile}
                   >
@@ -212,25 +209,28 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
               ))}
             </SelectContent>
           </Select>
-          
+
           <div className="space-y-2">
             <div className="flex justify-between">
               <Label htmlFor="font-size">Font Size</Label>
               <span className="text-sm text-muted-foreground">
-                {element.fontSize}px
+                {Math.round(element.fontSize)}px
               </span>
             </div>
             <Slider
               id="font-size"
               min={10}
-              max={72}
+              max={400}
               step={1}
               value={[element.fontSize]}
               onValueChange={(value) => onUpdate('fontSize', value[0])}
             />
+            <p className="text-xs text-muted-foreground">
+              Long names auto-shrink to fit the max width below.
+            </p>
           </div>
         </div>
-        
+
         <div className="space-y-2">
           <Label>Font Style</Label>
           <div className="flex gap-2">
@@ -241,23 +241,9 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
             >
               <Bold className="h-4 w-4" />
             </Toggle>
-            <Toggle
-              pressed={element.fontStyle === 'italic'}
-              onPressedChange={(pressed) => onUpdate('fontStyle', pressed ? 'italic' : 'normal')}
-              aria-label="Toggle italic"
-            >
-              <Italic className="h-4 w-4" />
-            </Toggle>
-            <Toggle
-              pressed={element.textDecoration === 'underline'}
-              onPressedChange={(pressed) => onUpdate('textDecoration', pressed ? 'underline' : 'none')}
-              aria-label="Toggle underline"
-            >
-              <Underline className="h-4 w-4" />
-            </Toggle>
           </div>
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="text-color" className="flex items-center gap-2">Text Color</Label>
           <div className="flex gap-2">
@@ -275,43 +261,57 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
             />
           </div>
         </div>
-        
+
         <div className="space-y-2">
-          <Label className="flex items-center gap-2">Position</Label>
+          <Label className="flex items-center gap-2">Position (center anchor)</Label>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label htmlFor="pos-x" className="text-xs">X Position</Label>
+              <Label htmlFor="pos-x" className="text-xs">X (%)</Label>
               <Input
                 id="pos-x"
                 type="number"
-                value={element.x}
-                onChange={(e) => onUpdate('x', Number(e.target.value))}
+                min={0}
+                max={100}
+                step={0.1}
+                value={xPctDisplay}
+                onChange={(e) => onUpdate('x', clampPct(Number(e.target.value) / 100))}
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="pos-y" className="text-xs">Y Position</Label>
+              <Label htmlFor="pos-y" className="text-xs">Y (%)</Label>
               <Input
                 id="pos-y"
                 type="number"
-                value={element.y}
-                onChange={(e) => onUpdate('y', Number(e.target.value))}
+                min={0}
+                max={100}
+                step={0.1}
+                value={yPctDisplay}
+                onChange={(e) => onUpdate('y', clampPct(Number(e.target.value) / 100))}
               />
             </div>
           </div>
         </div>
-        
+
         <div className="space-y-2">
-          <Label htmlFor="line-height">Line Height</Label>
+          <div className="flex justify-between">
+            <Label htmlFor="max-width">Max Width</Label>
+            <span className="text-sm text-muted-foreground">
+              {Math.round(element.maxWidthPct * 100)}%
+            </span>
+          </div>
           <Slider
-            id="line-height"
-            min={0.8}
-            max={3}
-            step={0.1}
-            value={[element.lineHeight]}
-            onValueChange={(value) => onUpdate('lineHeight', value[0])}
+            id="max-width"
+            min={10}
+            max={100}
+            step={1}
+            value={[Math.round(element.maxWidthPct * 100)]}
+            onValueChange={(value) => onUpdate('maxWidthPct', clampPct(value[0] / 100, 0.05, 1))}
           />
+          <p className="text-xs text-muted-foreground">
+            Maximum text width as a percentage of the canvas width. Names that exceed this width are auto-shrunk.
+          </p>
         </div>
       </div>
     </div>
   );
-} 
+}

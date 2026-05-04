@@ -3,26 +3,16 @@
 import { Button } from "@/components/ui/button";
 import { Plus, Upload, Loader2 } from "lucide-react";
 import { TextElement } from "@/types/types";
+import type { TextProperties } from "@/hooks/useCertificateDesigner";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/useToast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useState } from "react";
 
-interface TextProperties {
-  fontSize: number;
-  fontFamily: string;
-  color: string;
-  fontWeight: 'normal' | 'bold' | 'lighter';
-  fontStyle: string;
-  textDecoration: string;
-  textAlign: string;
-  lineHeight: number;
-}
-
 interface CertificateControlsProps {
   onAddTextElement: (type: 'name' | 'static') => void;
   textElements: TextElement[];
-  onLoadPreset: (properties: TextProperties) => void;
+  onLoadPreset: (properties: Partial<TextProperties>) => void;
   imageUrl: string | null;
 }
 
@@ -46,8 +36,18 @@ export function CertificateControls({
       reader.onload = (event) => {
         try {
           const preset = JSON.parse(event.target?.result as string);
-          const properties = preset.properties as TextProperties;
-          
+          const raw = (preset?.properties ?? {}) as Record<string, unknown>;
+          const properties: Partial<TextProperties> = {};
+          if (typeof raw.fontSize === "number") properties.fontSize = raw.fontSize;
+          if (typeof raw.fontFamily === "string") properties.fontFamily = raw.fontFamily;
+          if (typeof raw.color === "string") properties.color = raw.color;
+          if (raw.fontWeight === "bold" || raw.fontWeight === "normal") {
+            properties.fontWeight = raw.fontWeight;
+          }
+          if (typeof raw.maxWidthPct === "number") {
+            properties.maxWidthPct = Math.min(1, Math.max(0.05, raw.maxWidthPct));
+          }
+
           onLoadPreset(properties);
           toast({
             title: "Success",

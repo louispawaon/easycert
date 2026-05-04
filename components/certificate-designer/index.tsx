@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCertificateDesigner } from "@/hooks/useCertificateDesigner";
@@ -9,11 +9,9 @@ import { TextElementEditor } from "@/components/certificate-designer/TextElement
 import { CertificateControls } from "@/components/certificate-designer/CertificateControls";
 import { CertificatePreview } from "@/components/certificate-designer/CertificatePreview";
 import { CertificateGenerator } from "@/components/certificate-designer/CertificateGenerator";
-import { TextElement } from "@/types/types";
 import { useDesignerUiStore } from "@/store/designer-ui-store";
 
 export function CertificateDesigner() {
-  const canvasRef = useRef<HTMLDivElement>(null);
   const resetDesignerUi = useDesignerUiStore((s) => s.reset);
 
   useLayoutEffect(() => {
@@ -26,6 +24,8 @@ export function CertificateDesigner() {
     selectedElement,
     isGenerating,
     activeTab,
+    pageSize,
+    setPageSize,
     handleTabChange,
     handleElementUpdate,
     handleElementRemove,
@@ -38,7 +38,7 @@ export function CertificateDesigner() {
     generateCertificates,
     generateCertificatesPDF,
     printCertificates,
-    handlePreviewAdjustment,
+    loadPreset,
     autosaveStatus,
   } = useCertificateDesigner();
 
@@ -78,30 +78,16 @@ export function CertificateDesigner() {
                     </div>
                   </div>
                   
-                  <CanvasPreview
-                    {...canvasPreviewProps}
-                    canvasRef={canvasRef}
-                  />
+                  <CanvasPreview {...canvasPreviewProps} />
                 </div>
               </div>
               
               <div className="md:w-1/4 space-y-4">
-                <CertificateControls 
+                <CertificateControls
                   onAddTextElement={handleAddTextElement}
                   textElements={textElements}
                   imageUrl={imageUrl}
-                  onLoadPreset={(properties) => {
-                    if (selectedElement) {
-                      const element = textElements.find(el => el.id === selectedElement);
-                      if (element) {
-                        Object.entries(properties).forEach(([key, value]) => {
-                          if (key in element) {
-                            handleElementUpdate(key as keyof TextElement, value);
-                          }
-                        });
-                      }
-                    }
-                  }}
+                  onLoadPreset={loadPreset}
                 />
                 
                 {selectedElement && (
@@ -116,10 +102,7 @@ export function CertificateDesigner() {
           </TabsContent>
           
           <TabsContent value="preview" className="space-y-4">
-            <CertificatePreview
-              {...certificatePreviewProps}
-              onPreviewAdjustment={handlePreviewAdjustment}
-            />
+            <CertificatePreview {...certificatePreviewProps} />
           </TabsContent>
           
           <TabsContent value="generate" className="space-y-4">
@@ -137,6 +120,8 @@ export function CertificateDesigner() {
                   textElementsCount={textElementsCount}
                   namePlaceholdersCount={namePlaceholdersCount}
                   isGenerating={isGenerating}
+                  pageSize={pageSize}
+                  onPageSizeChange={setPageSize}
                   onGenerate={generateCertificates}
                   onGeneratePDF={generateCertificatesPDF}
                   onPrint={printCertificates}

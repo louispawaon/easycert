@@ -1,10 +1,13 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { TextElement } from "@/types/types";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { useFontLoader } from '@/hooks/useFontLoader';
-import { getCustomFonts } from '@/lib/fonts';
+import { useFontLoader } from "@/hooks/useFontLoader";
+import { useCertificateTemplateImage } from "@/hooks/useCertificateTemplateImage";
+import { drawCertificateToCanvas } from "@/lib/canvas/draw-text-element";
+import { awaitFontsReady } from "@/lib/canvas/await-fonts";
 
 interface CertificatePreviewProps {
   imageUrl: string | null;
@@ -14,8 +17,9 @@ interface CertificatePreviewProps {
   onDownload: () => void;
   onPreviewChange: (index: number) => void;
   imageDimensions: { width: number; height: number };
-  onPreviewAdjustment: (id: string, name: string, adjustment: { x: number; y: number }) => void;
 }
+
+const PREVIEW_HEIGHT_PX = 500;
 
 export function CertificatePreview({
   imageUrl,
@@ -25,9 +29,39 @@ export function CertificatePreview({
   onDownload,
   onPreviewChange,
   imageDimensions,
-  onPreviewAdjustment
 }: CertificatePreviewProps) {
   useFontLoader();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { image: templateImg } = useCertificateTemplateImage(imageUrl);
+
+  const attendee = attendees[previewIndex];
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !templateImg) return;
+    let cancelled = false;
+    (async () => {
+      await awaitFontsReady(textElements);
+      if (cancelled) return;
+      try {
+        drawCertificateToCanvas(canvas, templateImg, textElements, {
+          attendeeName: attendee ?? null,
+        });
+      } catch (err) {
+        console.error("Preview render failed:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [templateImg, textElements, attendee]);
+
+  const aspect =
+    imageDimensions.width && imageDimensions.height
+      ? imageDimensions.width / imageDimensions.height
+      : templateImg
+        ? (templateImg.naturalWidth || 1) / (templateImg.naturalHeight || 1)
+        : 1;
 
   return (
     <div className="border rounded-md p-4 bg-muted/20">
@@ -62,19 +96,20 @@ export function CertificatePreview({
           </div>
         )}
       </div>
-      
-      <div className="relative border rounded-md overflow-hidden bg-white mx-auto" 
-        style={{ 
-          height: '500px',
-          width: `${(500 / imageDimensions.height) * imageDimensions.width}px`
+
+      <div
+        className="relative border rounded-md overflow-hidden bg-white mx-auto"
+        style={{
+          height: `${PREVIEW_HEIGHT_PX}px`,
+          width: `${PREVIEW_HEIGHT_PX * aspect}px`,
+          maxWidth: "100%",
         }}
       >
         {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt="Certificate Template"
-            className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-            draggable={false}
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full"
+            style={{ display: "block" }}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -83,85 +118,9 @@ export function CertificatePreview({
             </p>
           </div>
         )}
-        
-        {attendees.length > 0 && textElements.map((element) => {
-          const adjustment = element.individualAdjustments?.[attendees[previewIndex]] || { x: 0, y: 0 };
-          return (
-            <div
-              id={element.id}
-              key={element.id}
-              className="absolute cursor-move"
-              style={{
-                left: `${element.x + adjustment.x}px`,
-                top: `${element.y + adjustment.y}px`,
-                fontSize: `${element.fontSize}px`,
-                fontFamily: (() => {
-                  const customFonts = getCustomFonts();
-                  return customFonts[element.fontFamily] 
-                    ? element.fontFamily 
-                    : `var(--font-${element.fontFamily.toLowerCase().replace(/ /g, '-')})`;
-                })(),
-                color: element.color,
-                padding: '4px',
-                userSelect: 'none',
-                zIndex: 10,
-                fontWeight: element.fontWeight,
-                fontStyle: element.fontStyle,
-                textDecoration: element.textDecoration,
-                textAlign: element.textAlign,
-                lineHeight: element.lineHeight
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const parentRect = e.currentTarget.parentElement?.getBoundingClientRect();
-                if (!parentRect) return;
-
-                const startX = e.clientX - parentRect.left;
-                const startY = e.clientY - parentRect.top;
-                const startElementX = element.x + adjustment.x;
-                const startElementY = element.y + adjustment.y;
-
-                const handleMouseMove = (e: MouseEvent) => {
-                  const target = document.getElementById(element.id) as HTMLElement;
-                  if (!target) return;
-                  
-                  // Calculate position relative to parent container
-                  const newX = e.clientX - parentRect.left;
-                  const newY = e.clientY - parentRect.top;
-                  
-                  // Update the element's position in real-time
-                  target.style.left = `${startElementX + (newX - startX)}px`;
-                  target.style.top = `${startElementY + (newY - startY)}px`;
-                };
-
-                const handleMouseUp = (e: MouseEvent) => {
-                  const newX = e.clientX - parentRect.left;
-                  const newY = e.clientY - parentRect.top;
-                  
-                  // Save the final adjustment
-                  onPreviewAdjustment(element.id, attendees[previewIndex], {
-                    x: adjustment.x + (newX - startX),
-                    y: adjustment.y + (newY - startY)
-                  });
-
-                  // Clean up event listeners
-                  window.removeEventListener('mousemove', handleMouseMove);
-                  window.removeEventListener('mouseup', handleMouseUp);
-                };
-
-                window.addEventListener('mousemove', handleMouseMove);
-                window.addEventListener('mouseup', handleMouseUp);
-              }}
-            >
-              {element.type === 'name' ? attendees[previewIndex] : element.text}
-            </div>
-          );
-        })}
       </div>
-      
-      {attendees.length > 0 && textElements.some(el => el.type === 'name') && (
+
+      {attendees.length > 0 && textElements.some((el) => el.type === "name") && (
         <div className="mt-4 flex justify-end">
           <Button onClick={onDownload}>
             <Download className="mr-2 h-4 w-4" />
