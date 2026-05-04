@@ -1,5 +1,5 @@
-import { FileUpload } from "@/components/file-upload/index";
-import { CertificateDesigner } from "@/components/certificate-designer/index";
+import { SessionRestoreGate } from "@/components/session-restore-gate";
+import { ProjectWorkspace } from "@/components/project-workspace";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Smartphone } from "lucide-react";
 import { Header } from "@/components/header";
@@ -24,10 +24,9 @@ export default function Home() {
             Upload your certificate design, add your attendee list, and generate personalized certificates in seconds.
           </p>
         </div>
-        <div className="grid gap-8">
-          <FileUpload />
-          <CertificateDesigner />
-        </div>
+        <SessionRestoreGate>
+          <ProjectWorkspace />
+        </SessionRestoreGate>
       </main>
       <Footer />
     </div>

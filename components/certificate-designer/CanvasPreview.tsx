@@ -1,7 +1,6 @@
 "use client";
 
 import { TextElement } from "@/types/types";
-import Image from 'next/image';
 import { getCustomFonts } from '@/lib/fonts';
 import { useFontLoader } from '@/hooks/useFontLoader';
 
@@ -48,11 +47,12 @@ export function CanvasPreview({
         }}
       >
         {imageUrl ? (
-          <Image 
-            src={imageUrl} 
-            alt="Certificate Template" 
-            fill
-            className="object-contain"
+          // User templates are data URLs; native img avoids Next/Image optimizer issues with data:
+          <img
+            src={imageUrl}
+            alt="Certificate Template"
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+            draggable={false}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

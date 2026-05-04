@@ -32,15 +32,23 @@ export function CertificateDesigner() {
     generateCertificatesPDF,
     printCertificates,
     handlePreviewAdjustment,
+    autosaveStatus,
   } = useCertificateDesigner();
 
   return (
     <Card className="mb-8">
       <CardHeader>
-        <CardTitle>Certificate Designer</CardTitle>
-        <CardDescription>
-          Design your certificate by adding and positioning text elements.
-        </CardDescription>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="space-y-1.5">
+            <CardTitle>Certificate Designer</CardTitle>
+            <CardDescription>
+              Design your certificate by adding and positioning text elements.
+            </CardDescription>
+          </div>
+          {autosaveStatus ? (
+            <p className="text-xs text-muted-foreground tabular-nums pt-1">{autosaveStatus}</p>
+          ) : null}
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="design" value={activeTab} onValueChange={handleTabChange}>

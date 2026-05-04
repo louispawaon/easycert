@@ -3,7 +3,6 @@
 import { TextElement } from "@/types/types";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import Image from 'next/image';
 import { useFontLoader } from '@/hooks/useFontLoader';
 import { getCustomFonts } from '@/lib/fonts';
 
@@ -71,11 +70,11 @@ export function CertificatePreview({
         }}
       >
         {imageUrl ? (
-          <Image 
-            src={imageUrl} 
-            alt="Certificate Template" 
-            fill
-            className="object-contain"
+          <img
+            src={imageUrl}
+            alt="Certificate Template"
+            className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+            draggable={false}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

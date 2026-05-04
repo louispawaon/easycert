@@ -2,8 +2,6 @@ import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Image from 'next/image';
-
 interface CertificateUploadProps {
   imagePreview: string | null;
   handleCertificateUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -22,11 +20,9 @@ export function CertificateUpload({
       <Label htmlFor="certificate">Certificate Template</Label>
       {imagePreview ? (
         <div className="mt-2 relative rounded-md overflow-hidden border w-full h-[92%]">
-          <Image 
-            src={imagePreview} 
-            alt="Certificate Preview" 
-            width={300} 
-            height={200}
+          <img
+            src={imagePreview}
+            alt="Certificate Preview"
             className="w-full h-auto object-contain max-h-[300px]"
           />
           <Button 
