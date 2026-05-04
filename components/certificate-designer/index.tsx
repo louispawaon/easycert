@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCertificateDesigner } from "@/hooks/useCertificateDesigner";
@@ -10,9 +10,16 @@ import { CertificateControls } from "@/components/certificate-designer/Certifica
 import { CertificatePreview } from "@/components/certificate-designer/CertificatePreview";
 import { CertificateGenerator } from "@/components/certificate-designer/CertificateGenerator";
 import { TextElement } from "@/types/types";
+import { useDesignerUiStore } from "@/store/designer-ui-store";
 
 export function CertificateDesigner() {
   const canvasRef = useRef<HTMLDivElement>(null);
+  const resetDesignerUi = useDesignerUiStore((s) => s.reset);
+
+  useLayoutEffect(() => {
+    resetDesignerUi();
+  }, [resetDesignerUi]);
+
   const {
     imageUrl,
     textElements,

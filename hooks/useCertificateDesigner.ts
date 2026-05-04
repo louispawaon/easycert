@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/useToast";
 import { TextElement } from "@/types/types";
@@ -9,9 +10,11 @@ import { useCertificateImage } from "@/hooks/useCertificate";
 import { easyCertDb } from "@/lib/db/easycert-db";
 import { saveTextElements } from "@/lib/db/app-state";
 import { formatSavedAtLabel } from "@/lib/db/session-utils";
+import { loadCertificateImageNaturalSize } from "@/lib/cert-image-dimensions";
 import { generatePDF } from "@/lib/pdf";
 import { generateCertificateImage as generateCertificateImageUtil } from "@/lib/utils";
 import { generateCertificates as generateCertificatesUtil } from "@/lib/utils";
+import { useDesignerUiStore } from "@/store/designer-ui-store";
 
 interface TextProperties {
   fontSize: number;
@@ -29,11 +32,21 @@ export function useCertificateDesigner() {
   const { imageUrl } = useCertificateImage();
   const { attendees } = useAttendees();
   const [textElements, setTextElements] = useState<TextElement[]>([]);
-  const [selectedElement, setSelectedElement] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [previewIndex, setPreviewIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState("design");
-  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+
+  const selectedElement = useDesignerUiStore((s) => s.selectedElement);
+  const setSelectedElement = useDesignerUiStore((s) => s.setSelectedElement);
+  const isGenerating = useDesignerUiStore((s) => s.isGenerating);
+  const setIsGenerating = useDesignerUiStore((s) => s.setIsGenerating);
+  const previewIndex = useDesignerUiStore((s) => s.previewIndex);
+  const setPreviewIndex = useDesignerUiStore((s) => s.setPreviewIndex);
+  const activeTab = useDesignerUiStore((s) => s.activeTab);
+  const setActiveTab = useDesignerUiStore((s) => s.setActiveTab);
+
+  const { data: imageDimensions = { width: 0, height: 0 } } = useQuery({
+    queryKey: ["easycert", "cert-image-dims", imageUrl],
+    queryFn: () => loadCertificateImageNaturalSize(imageUrl!),
+    enabled: Boolean(imageUrl),
+  });
 
   const appStateRow = useLiveQuery(() => easyCertDb.appState.get("default"));
   const didHydrateTextElements = useRef(false);
@@ -113,12 +126,15 @@ export function useCertificateDesigner() {
   );
 
   // Event handlers
-  const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value);
-    if (value === "preview" && textElements.some(el => el.type === 'name') && attendees.length > 0) {
-      setPreviewIndex(0);
-    }
-  }, [textElements, attendees]);
+  const handleTabChange = useCallback(
+    (value: string) => {
+      setActiveTab(value);
+      if (value === "preview" && textElements.some((el) => el.type === "name") && attendees.length > 0) {
+        setPreviewIndex(0);
+      }
+    },
+    [textElements, attendees, setActiveTab, setPreviewIndex]
+  );
 
   const handleElementSelect = useCallback((id: string | null) => {
     setSelectedElement(id);
@@ -492,27 +508,28 @@ export function useCertificateDesigner() {
     imageDimensions,
   }), [imageUrl, textElements, selectedElement, handleElementSelect, handleElementDragStart, imageDimensions]);
 
-  const certificatePreviewProps = useMemo(() => ({
-    imageUrl,
-    attendees,
-    previewIndex,
-    textElements,
-    onDownload: downloadCertificate,
-    onPreviewChange: setPreviewIndex,
-    imageDimensions,
-    onPreviewAdjustment: handlePreviewAdjustment
-  }), [imageUrl, attendees, previewIndex, textElements, downloadCertificate, imageDimensions, handlePreviewAdjustment]);
-
-  // Update image dimensions
-  useEffect(() => {
-    if (imageUrl) {
-      const img = new Image();
-      img.src = imageUrl;
-      img.onload = () => {
-        setImageDimensions({ width: img.width, height: img.height });
-      };
-    }
-  }, [imageUrl]);
+  const certificatePreviewProps = useMemo(
+    () => ({
+      imageUrl,
+      attendees,
+      previewIndex,
+      textElements,
+      onDownload: downloadCertificate,
+      onPreviewChange: setPreviewIndex,
+      imageDimensions,
+      onPreviewAdjustment: handlePreviewAdjustment,
+    }),
+    [
+      imageUrl,
+      attendees,
+      previewIndex,
+      textElements,
+      downloadCertificate,
+      setPreviewIndex,
+      imageDimensions,
+      handlePreviewAdjustment,
+    ]
+  );
 
   return {
     imageUrl,

@@ -8,6 +8,10 @@ import {
   saveCertificateImage,
   saveAttendeeListText,
 } from "@/lib/db/app-state";
+import {
+  notifyCertificateImageCleared,
+  notifyCertificateImageUploaded,
+} from "@/store/certificate-image-bridge";
 
 export function useFileUpload() {
   const { toast } = useToast();
@@ -56,9 +60,7 @@ export function useFileUpload() {
         const imageUrl = event.target?.result as string;
         setLocalImagePreview(imageUrl);
         setIsUploading(false);
-        window.dispatchEvent(
-          new CustomEvent("certificate-image-uploaded", { detail: { imageUrl } })
-        );
+        notifyCertificateImageUploaded(imageUrl);
         void saveCertificateImage(imageUrl);
       };
 
@@ -123,7 +125,7 @@ export function useFileUpload() {
 
   const handleClearCertificate = () => {
     setLocalImagePreview(null);
-    window.dispatchEvent(new CustomEvent("certificate-image-cleared"));
+    notifyCertificateImageCleared();
     void saveCertificateImage(null);
   };
 

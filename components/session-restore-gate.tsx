@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -19,35 +20,26 @@ import {
 type GatePhase = "checking" | "prompt" | "ready";
 
 export function SessionRestoreGate({ children }: { children: React.ReactNode }) {
-  const [phase, setPhase] = useState<GatePhase>("checking");
-  const [snapshot, setSnapshot] = useState<Awaited<ReturnType<typeof loadAppState>>>(undefined);
-  /** Bumped on Strict Mode effect cleanup so stale async work does not skip the only setPhase. */
-  const loadGeneration = useRef(0);
+  const [dismissedPrompt, setDismissedPrompt] = useState(false);
 
-  useEffect(() => {
-    const myGen = ++loadGeneration.current;
-    (async () => {
-      try {
-        const row = await loadAppState();
-        if (myGen !== loadGeneration.current) return;
-        if (isRestorableProject(row)) {
-          setSnapshot(row);
-          setPhase("prompt");
-        } else {
-          setPhase("ready");
-        }
-      } catch {
-        if (myGen !== loadGeneration.current) return;
-        setPhase("ready");
-      }
-    })();
-    return () => {
-      loadGeneration.current++;
-    };
-  }, []);
+  const { data, isPending, isError } = useQuery({
+    queryKey: ["easycert", "session-restore"],
+    queryFn: loadAppState,
+    staleTime: Infinity,
+  });
+
+  const restorable = !!(data && isRestorableProject(data));
+
+  const phase = useMemo<GatePhase>(() => {
+    if (isPending) return "checking";
+    if (isError || !restorable || dismissedPrompt) return "ready";
+    return "prompt";
+  }, [isPending, isError, restorable, dismissedPrompt]);
+
+  const snapshot = phase === "prompt" && data ? data : undefined;
 
   const handleRestore = useCallback(() => {
-    setPhase("ready");
+    setDismissedPrompt(true);
   }, []);
 
   const handleDownloadOnly = useCallback(() => {
@@ -56,7 +48,7 @@ export function SessionRestoreGate({ children }: { children: React.ReactNode }) 
 
   const handleStartFresh = useCallback(async () => {
     if (!snapshot) {
-      setPhase("ready");
+      setDismissedPrompt(true);
       return;
     }
     downloadProjectBackup(snapshot);
@@ -65,7 +57,7 @@ export function SessionRestoreGate({ children }: { children: React.ReactNode }) 
     } catch (e) {
       console.error(e);
     }
-    setPhase("ready");
+    setDismissedPrompt(true);
   }, [snapshot]);
 
   if (phase === "checking") {

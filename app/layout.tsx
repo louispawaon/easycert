@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { FONT_CLASSES } from '@/lib/fonts';
 import { ThemeProvider } from '@/components/theme-provider';
+import { QueryProvider } from '@/components/query-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { Analytics } from "@vercel/analytics/react"
 
@@ -46,9 +47,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Analytics />
-          <Toaster />
+          <QueryProvider>
+            {children}
+            <Analytics />
+            <Toaster />
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

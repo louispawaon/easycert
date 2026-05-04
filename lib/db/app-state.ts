@@ -1,5 +1,9 @@
 import type { TextElement } from "@/types/types";
 import { setCustomFontsCache } from "@/lib/fonts-cache";
+import {
+  notifyCertificateImageCleared,
+  notifyCertificateImageUploaded,
+} from "@/store/certificate-image-bridge";
 import { isRestorableProject } from "@/lib/db/session-utils";
 import {
   easyCertDb,
@@ -153,7 +157,7 @@ export async function discardActiveSessionToRecovery(
   };
   await easyCertDb.appState.put(cleared);
   setCustomFontsCache({});
-  window.dispatchEvent(new CustomEvent("certificate-image-cleared"));
+  notifyCertificateImageCleared();
 }
 
 /** Copy current `default` project to `last-discarded` recovery (no download). */
@@ -184,12 +188,8 @@ export async function applyImportedAppState(src: AppStateRecord): Promise<void> 
   await easyCertDb.appState.put(next);
   setCustomFontsCache(next.customFonts ?? {});
   if (next.certificateImageUrl) {
-    window.dispatchEvent(
-      new CustomEvent("certificate-image-uploaded", {
-        detail: { imageUrl: next.certificateImageUrl },
-      })
-    );
+    notifyCertificateImageUploaded(next.certificateImageUrl);
   } else {
-    window.dispatchEvent(new CustomEvent("certificate-image-cleared"));
+    notifyCertificateImageCleared();
   }
 }
