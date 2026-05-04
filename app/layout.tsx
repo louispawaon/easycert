@@ -1,7 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { FONT_CLASSES } from '@/lib/fonts';
-import { ThemeProvider } from '@/components/theme-provider';
 import { QueryProvider } from '@/components/query-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { Analytics } from "@vercel/analytics/react"
@@ -41,18 +40,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${FONT_CLASSES}`} suppressHydrationWarning>
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <QueryProvider>
-            {children}
-            <Analytics />
-            <Toaster />
-          </QueryProvider>
-        </ThemeProvider>
+        <QueryProvider>
+          {children}
+          <Analytics />
+          <Toaster />
+        </QueryProvider>
       </body>
     </html>
   );

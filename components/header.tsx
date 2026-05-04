@@ -1,6 +1,5 @@
 "use client";
 
-import { ModeToggle } from "@/components/mode-toggle";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
@@ -32,7 +31,6 @@ export function Header() {
             </Badge>
           </div>
         </div>
-        <ModeToggle />
       </div>
     </header>
   );
