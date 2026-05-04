@@ -19,18 +19,6 @@ export function dispatchEvent(event: CustomEvent): void {
   window.dispatchEvent(event);
 }
 
-export function getLocalStorageItem(key: string): string | null {
-  return localStorage.getItem(key);
-}
-
-export function setLocalStorageItem(key: string, value: string): void {
-  localStorage.setItem(key, value);
-}
-
-export function removeLocalStorageItem(key: string): void {
-  localStorage.removeItem(key);
-}
-
 export async function generateCertificateImage(
   imageUrl: string,
   textElements: TextElement[],
