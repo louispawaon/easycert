@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/useToast";
 import { TextElement } from "@/types/types";
 import { useAttendees } from "@/hooks/useAttendees";
 import { useCertificateImage } from "@/hooks/useCertificate";
-import { getLocalStorageItem } from "@/lib/utils";
-import { addEventListener, removeEventListener } from "@/lib/utils";
+import { easyCertDb } from "@/lib/db/easycert-db";
+import { saveTextElements } from "@/lib/db/app-state";
+import { formatSavedAtLabel } from "@/lib/db/session-utils";
 import { generatePDF } from "@/lib/pdf";
 import { generateCertificateImage as generateCertificateImageUtil } from "@/lib/utils";
 import { generateCertificates as generateCertificatesUtil } from "@/lib/utils";
@@ -24,14 +26,83 @@ interface TextProperties {
 
 export function useCertificateDesigner() {
   const { toast } = useToast();
-  const { imageUrl, setImageUrl } = useCertificateImage();
-  const { attendees, setAttendees } = useAttendees();
+  const { imageUrl } = useCertificateImage();
+  const { attendees } = useAttendees();
   const [textElements, setTextElements] = useState<TextElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("design");
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+
+  const appStateRow = useLiveQuery(() => easyCertDb.appState.get("default"));
+  const didHydrateTextElements = useRef(false);
+  const skipNextTextElementsPersist = useRef(true);
+  const debounceTimerRef = useRef<number | null>(null);
+  const dirtyTextRef = useRef(false);
+  const textElementsRef = useRef<TextElement[]>(textElements);
+  textElementsRef.current = textElements;
+
+  const [autosaveClock, setAutosaveClock] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setAutosaveClock((c) => c + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const autosaveStatus = useMemo(
+    () => formatSavedAtLabel(appStateRow?.savedAt),
+    [appStateRow?.savedAt, autosaveClock]
+  );
+
+  useEffect(() => {
+    if (appStateRow === undefined || didHydrateTextElements.current) return;
+    didHydrateTextElements.current = true;
+    if (appStateRow.textElements?.length) {
+      setTextElements(appStateRow.textElements);
+    }
+    skipNextTextElementsPersist.current = true;
+  }, [appStateRow]);
+
+  useEffect(() => {
+    if (appStateRow === undefined || !didHydrateTextElements.current) return;
+    if (skipNextTextElementsPersist.current) {
+      skipNextTextElementsPersist.current = false;
+      return;
+    }
+    dirtyTextRef.current = true;
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = window.setTimeout(() => {
+      debounceTimerRef.current = null;
+      void saveTextElements(textElementsRef.current).then(() => {
+        dirtyTextRef.current = false;
+      });
+    }, 400);
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, [textElements, appStateRow]);
+
+  useEffect(() => {
+    const flush = () => {
+      if (document.visibilityState !== "hidden") return;
+      if (!dirtyTextRef.current) return;
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      void saveTextElements(textElementsRef.current);
+      dirtyTextRef.current = false;
+    };
+    document.addEventListener("visibilitychange", flush);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", flush);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, []);
 
   // Memoize expensive calculations
   const attendeesCount = useMemo(() => attendees.length, [attendees]);
@@ -432,45 +503,6 @@ export function useCertificateDesigner() {
     onPreviewAdjustment: handlePreviewAdjustment
   }), [imageUrl, attendees, previewIndex, textElements, downloadCertificate, imageDimensions, handlePreviewAdjustment]);
 
-  // Load saved data and set up event listeners
-  useEffect(() => {
-    const savedImageUrl = getLocalStorageItem('certificateImageUrl');
-    const savedAttendeeList = getLocalStorageItem('attendeeList');
-
-    if (savedImageUrl) setImageUrl(savedImageUrl);
-    if (savedAttendeeList) {
-      const names = savedAttendeeList.split('\n').filter(line => line.trim());
-      setAttendees(names);
-    } else {
-      setAttendees([
-        "John Doe",
-        "Jane Smith",
-        "Michael Johnson",
-        "Emily Williams",
-        "Robert Brown"
-      ]);
-    }
-
-    const handleImageUpload = (event: CustomEvent) => setImageUrl(event.detail.imageUrl);
-    const handleImageClear = () => setImageUrl(null);
-    const handleAttendeeUpdate = (event: CustomEvent) => setAttendees(event.detail.attendees);
-    const handleAttendeeClear = () => setAttendees([]);
-
-    addEventListener('certificate-image-uploaded', handleImageUpload as EventListener);
-    addEventListener('certificate-image-cleared', handleImageClear);
-    addEventListener('attendee-list-uploaded', handleAttendeeUpdate as EventListener);
-    addEventListener('attendee-list-updated', handleAttendeeUpdate as EventListener);
-    addEventListener('attendee-list-cleared', handleAttendeeClear);
-
-    return () => {
-      removeEventListener('certificate-image-uploaded', handleImageUpload as EventListener);
-      removeEventListener('certificate-image-cleared', handleImageClear);
-      removeEventListener('attendee-list-uploaded', handleAttendeeUpdate as EventListener);
-      removeEventListener('attendee-list-updated', handleAttendeeUpdate as EventListener);
-      removeEventListener('attendee-list-cleared', handleAttendeeClear);
-    };
-  }, [setAttendees, setImageUrl]);
-
   // Update image dimensions
   useEffect(() => {
     if (imageUrl) {
@@ -509,5 +541,6 @@ export function useCertificateDesigner() {
     namePlaceholdersCount,
     handlePreviewAdjustment,
     loadPreset,
+    autosaveStatus,
   };
 }

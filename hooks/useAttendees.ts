@@ -1,30 +1,23 @@
-import { useEffect, useState } from "react";
-import { getLocalStorageItem } from "@/lib/utils";
-import { addEventListener, removeEventListener } from "@/lib/utils";;
+"use client";
+
+import { useCallback, useMemo } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { easyCertDb } from "@/lib/db/easycert-db";
+import { saveAttendeeListText } from "@/lib/db/app-state";
+import { DEMO_ATTENDEES } from "@/lib/demo-attendees";
 
 export function useAttendees() {
-    const [attendees, setAttendees] = useState<string[]>([]);
-    
-    useEffect(() => {
-      const savedAttendeeList = getLocalStorageItem('attendeeList');
-      if (savedAttendeeList) {
-        const names = savedAttendeeList.split('\n').filter(line => line.trim());
-        setAttendees(names);
-      }
-  
-      const handleAttendeeUpdate = (event: CustomEvent) => setAttendees(event.detail.attendees);
-      const handleAttendeeClear = () => setAttendees([]);
-  
-      addEventListener('attendee-list-uploaded', handleAttendeeUpdate as EventListener);
-      addEventListener('attendee-list-updated', handleAttendeeUpdate as EventListener);
-      addEventListener('attendee-list-cleared', handleAttendeeClear);
-  
-      return () => {
-        removeEventListener('attendee-list-uploaded', handleAttendeeUpdate as EventListener);
-        removeEventListener('attendee-list-updated', handleAttendeeUpdate as EventListener);
-        removeEventListener('attendee-list-cleared', handleAttendeeClear);
-      };
-    }, []);
-  
-    return { attendees, setAttendees };
+  const row = useLiveQuery(() => easyCertDb.appState.get("default"));
+
+  const attendees = useMemo(() => {
+    if (row === undefined) return [];
+    if (row.attendeeListText === undefined) return DEMO_ATTENDEES;
+    return row.attendeeListText.split("\n").filter((line) => line.trim());
+  }, [row]);
+
+  const setAttendees = useCallback((names: string[]) => {
+    void saveAttendeeListText(names.join("\n"));
+  }, []);
+
+  return { attendees, setAttendees };
 }
