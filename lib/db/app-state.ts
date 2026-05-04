@@ -1,10 +1,15 @@
-import type { TextElement } from "@/types/types";
+import type { TextElement, ImageDimensions } from "@/types/types";
 import { setCustomFontsCache } from "@/lib/fonts-cache";
 import {
   notifyCertificateImageCleared,
   notifyCertificateImageUploaded,
 } from "@/store/certificate-image-bridge";
 import { isRestorableProject } from "@/lib/db/session-utils";
+import {
+  hasLegacyTextElements,
+  migrateTextElements,
+} from "@/lib/canvas/migrate-text-element";
+import { loadCertificateTemplateImage } from "@/lib/cert-template-image";
 import {
   easyCertDb,
   type AppStateRecord,
@@ -95,6 +100,31 @@ export async function migrateFromLocalStorage(): Promise<void> {
   localStorage.removeItem("customFonts");
 }
 
+async function probeImageDimensions(url: string | undefined): Promise<ImageDimensions | undefined> {
+  if (!url) return undefined;
+  try {
+    const { dimensions } = await loadCertificateTemplateImage(url);
+    return dimensions;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Rewrite stored text elements to the new percentage/center-anchor schema when
+ * the loaded record still uses the legacy pixel layout. Idempotent: returns
+ * silently when nothing needs migrating.
+ */
+async function migrateTextElementsIfNeeded(): Promise<void> {
+  const row = await easyCertDb.appState.get(DEFAULT_ID);
+  if (!row || !Array.isArray(row.textElements) || row.textElements.length === 0) return;
+  if (!hasLegacyTextElements(row.textElements)) return;
+
+  const dims = await probeImageDimensions(row.certificateImageUrl);
+  const migrated = migrateTextElements(row.textElements, dims);
+  await patchAppState({ textElements: migrated });
+}
+
 /** Run after DB open: migrate legacy keys and sync font cache from DB. */
 export async function hydrateCachesFromDb(): Promise<void> {
   await migrateFromLocalStorage();
@@ -103,6 +133,7 @@ export async function hydrateCachesFromDb(): Promise<void> {
   if (row?.customFonts && JSON.stringify(stripInvalidBlobFonts(row.customFonts)) !== JSON.stringify(row.customFonts)) {
     await patchAppState({ customFonts: stripInvalidBlobFonts(row.customFonts) });
   }
+  await migrateTextElementsIfNeeded();
 }
 
 // Fire-and-forget: do not return a Promise or Dexie will block db.open() on this work,
