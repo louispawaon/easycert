@@ -48,7 +48,7 @@ export function CertificateDesigner(
             <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-semibold">
               Design your certificate
             </CardTitle>
-            <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground font-light italic">
+            <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground font-light ">
             Click an element type, then click the canvas to place it.
             </CardDescription>
           </div>
@@ -64,7 +64,7 @@ export function CertificateDesigner(
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
                 <div className="space-y-1 min-w-0">
                   <h3 className="text-lg font-medium">Previewing: {previewingName}</h3>
-                  <p className="text-sm text-muted-foreground italic">
+                  <p className="text-sm text-muted-foreground">
                     Drag elements to position them on your certificate
                   </p>
                 </div>

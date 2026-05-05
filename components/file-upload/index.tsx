@@ -32,8 +32,8 @@ export function FileUpload({ wizardFooter }: FileUploadProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-4xl font-semibold">Upload your files</CardTitle>
-        <CardDescription className="text-2xl text-muted-foreground font-light italic">
+        <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-semibold">Upload your files</CardTitle>
+        <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground font-light">
           Upload your certificate template and attendee list to get started.
         </CardDescription>
       </CardHeader>

@@ -251,9 +251,7 @@ export function ProjectWorkspace() {
           <DialogHeader>
             <DialogTitle>Replace current project?</DialogTitle>
             <DialogDescription>
-              This will overwrite the project in this browser. The current project will be kept as
-              the last recovery snapshot in IndexedDB (no automatic download).
-            </DialogDescription>
+              This will replace your current project. Your previous work will be saved so you can restore it later.            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
@@ -284,8 +282,8 @@ export function ProjectWorkspace() {
         {wizardStep === 2 ? (
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="text-4xl font-semibold">Generate Certificates</CardTitle>
-              <CardDescription className="text-2xl text-muted-foreground font-light italic">
+              <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-semibold">Generate Certificates</CardTitle>
+              <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground font-light">
                 Generate certificates for all attendees in your list
               </CardDescription>
             </CardHeader>
