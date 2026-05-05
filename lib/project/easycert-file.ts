@@ -70,6 +70,14 @@ function validateAppState(app: unknown): ParseEasycertResult {
     return { ok: false, error: "Invalid project: customFonts must be an object of string URLs (no blob: URLs)." };
   }
 
+  let wizardStep: 0 | 1 | 2 | undefined;
+  if (a.wizardStep !== undefined && a.wizardStep !== null) {
+    if (a.wizardStep !== 0 && a.wizardStep !== 1 && a.wizardStep !== 2) {
+      return { ok: false, error: "Invalid project: wizardStep must be 0, 1, or 2." };
+    }
+    wizardStep = a.wizardStep;
+  }
+
   if (a.textElements !== undefined && !Array.isArray(a.textElements)) {
     return { ok: false, error: "Invalid project: textElements must be an array." };
   }
@@ -93,6 +101,7 @@ function validateAppState(app: unknown): ParseEasycertResult {
     ...(attendeeListText !== undefined ? { attendeeListText } : {}),
     customFonts: fonts,
     textElements,
+    ...(wizardStep !== undefined ? { wizardStep } : {}),
   };
   return { ok: true, app: record };
 }

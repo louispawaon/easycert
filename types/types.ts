@@ -12,7 +12,9 @@ export type TextElement = {
   /** Base font size in px on the full-resolution canvas. */
   fontSize: number;
   fontFamily: string;
+  fontStyle: 'normal' | 'italic';
   fontWeight: 'normal' | 'bold';
+  textDecoration: 'none' | 'underline';
   color: string;
   /** Static text value. `null` for `type === 'name'` (resolved per-attendee at draw time). */
   value: string | null;
@@ -34,7 +36,9 @@ export function createNameElement(): TextElement {
     maxWidthPct: 0.7,
     fontSize: 52,
     fontFamily: 'Georgia',
+    fontStyle: 'normal',
     fontWeight: 'normal',
+    textDecoration: 'none',
     color: '#1a1a18',
     value: null,
   };
@@ -49,7 +53,9 @@ export function createStaticElement(): TextElement {
     maxWidthPct: 0.6,
     fontSize: 24,
     fontFamily: 'Georgia',
+    fontStyle: 'normal',
     fontWeight: 'normal',
+    textDecoration: 'none',
     color: '#1a1a18',
     value: 'Enter text here',
   };

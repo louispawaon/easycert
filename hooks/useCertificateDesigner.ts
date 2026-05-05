@@ -24,16 +24,20 @@ import { buildPrintHtml } from "@/lib/print-html";
 export interface TextProperties {
   fontSize: number;
   fontFamily: string;
+  fontStyle: 'normal' | 'italic';
   color: string;
   fontWeight: 'normal' | 'bold';
+  textDecoration: 'none' | 'underline';
   maxWidthPct: number;
 }
 
 const STYLE_KEYS: ReadonlyArray<keyof TextProperties> = [
   'fontSize',
   'fontFamily',
+  'fontStyle',
   'color',
   'fontWeight',
+  'textDecoration',
   'maxWidthPct',
 ];
 
@@ -49,8 +53,6 @@ export function useCertificateDesigner() {
   const setIsGenerating = useDesignerUiStore((s) => s.setIsGenerating);
   const previewIndex = useDesignerUiStore((s) => s.previewIndex);
   const setPreviewIndex = useDesignerUiStore((s) => s.setPreviewIndex);
-  const activeTab = useDesignerUiStore((s) => s.activeTab);
-  const setActiveTab = useDesignerUiStore((s) => s.setActiveTab);
   const pageSize = useDesignerUiStore((s) => s.pageSize);
   const setPageSize = useDesignerUiStore((s) => s.setPageSize);
 
@@ -83,6 +85,12 @@ export function useCertificateDesigner() {
     }
     skipNextTextElementsPersist.current = true;
   }, [appStateRow]);
+
+  useEffect(() => {
+    if (!selectedElement) return;
+    if (textElements.some((el) => el.id === selectedElement)) return;
+    setSelectedElement(null);
+  }, [textElements, selectedElement, setSelectedElement]);
 
   useEffect(() => {
     if (appStateRow === undefined || !didHydrateTextElements.current) return;
@@ -132,15 +140,13 @@ export function useCertificateDesigner() {
     [textElements]
   );
 
-  const handleTabChange = useCallback(
-    (value: string) => {
-      setActiveTab(value);
-      if (value === "preview" && textElements.some((el) => el.type === "name") && attendees.length > 0) {
-        setPreviewIndex(0);
-      }
-    },
-    [textElements, attendees, setActiveTab, setPreviewIndex]
-  );
+  useEffect(() => {
+    if (attendees.length === 0) {
+      setPreviewIndex(0);
+      return;
+    }
+    setPreviewIndex((i) => Math.min(i, attendees.length - 1));
+  }, [attendees.length, setPreviewIndex]);
 
   const handleElementSelect = useCallback((id: string | null) => {
     setSelectedElement(id);
@@ -171,8 +177,11 @@ export function useCertificateDesigner() {
       const newElement = type === 'name' ? createNameElement() : createStaticElement();
       setTextElements(prev => [...prev, newElement]);
       setSelectedElement(newElement.id);
+      if (type === "name" && attendees.length > 0) {
+        setPreviewIndex(0);
+      }
     },
-    [setSelectedElement]
+    [setSelectedElement, attendees.length, setPreviewIndex]
   );
 
   const generateCertificateImage = useCallback(
@@ -401,8 +410,21 @@ export function useCertificateDesigner() {
       onElementSelect: handleElementSelect,
       onElementMove: handleElementMove,
       imageDimensions,
+      previewAttendeeName:
+        textElements.some((el) => el.type === "name") && attendees.length > 0
+          ? (attendees[previewIndex] ?? null)
+          : null,
     }),
-    [imageUrl, textElements, selectedElement, handleElementSelect, handleElementMove, imageDimensions]
+    [
+      imageUrl,
+      textElements,
+      selectedElement,
+      handleElementSelect,
+      handleElementMove,
+      imageDimensions,
+      attendees,
+      previewIndex,
+    ]
   );
 
   const certificatePreviewProps = useMemo(
@@ -433,11 +455,9 @@ export function useCertificateDesigner() {
     selectedElement,
     isGenerating,
     previewIndex,
-    activeTab,
     imageDimensions,
     pageSize,
     setPageSize,
-    handleTabChange,
     handleElementSelect,
     handleElementMove,
     handleElementUpdate,
@@ -457,3 +477,5 @@ export function useCertificateDesigner() {
     autosaveStatus,
   };
 }
+
+export type CertificateDesignerController = ReturnType<typeof useCertificateDesigner>;

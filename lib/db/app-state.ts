@@ -1,5 +1,6 @@
 import type { TextElement, ImageDimensions } from "@/types/types";
 import { setCustomFontsCache } from "@/lib/fonts-cache";
+import type { WizardStepIndex } from "@/store/designer-ui-store";
 import {
   notifyCertificateImageCleared,
   notifyCertificateImageUploaded,
@@ -36,6 +37,7 @@ async function getOrCreateRow(): Promise<AppStateRecord> {
     id: DEFAULT_ID,
     customFonts: {},
     textElements: [],
+    wizardStep: 0,
     savedAt: Date.now(),
   };
   await easyCertDb.appState.put(fresh);
@@ -50,6 +52,7 @@ async function patchAppState(partial: Partial<Omit<AppStateRecord, "id">>): Prom
     attendeeListText: cur.attendeeListText,
     customFonts: cur.customFonts ?? {},
     textElements: cur.textElements ?? [],
+    wizardStep: cur.wizardStep ?? 0,
     ...partial,
     savedAt: Date.now(),
   };
@@ -90,6 +93,7 @@ export async function migrateFromLocalStorage(): Promise<void> {
     attendeeListText: current?.attendeeListText ?? (attendees !== null ? attendees : undefined),
     customFonts,
     textElements: current?.textElements ?? [],
+    wizardStep: current?.wizardStep ?? 0,
     savedAt: Date.now(),
   };
   await easyCertDb.appState.put(next);
@@ -160,6 +164,10 @@ export async function saveTextElements(elements: TextElement[]): Promise<void> {
   await patchAppState({ textElements: elements });
 }
 
+export async function saveWizardStep(step: WizardStepIndex): Promise<void> {
+  await patchAppState({ wizardStep: step });
+}
+
 /** Open DB, run legacy migration + font cache sync, then read the active row. */
 export async function loadAppState(): Promise<AppStateRecord | undefined> {
   await easyCertDb.open();
@@ -184,6 +192,7 @@ export async function discardActiveSessionToRecovery(
     id: DEFAULT_ID,
     customFonts: {},
     textElements: [],
+    wizardStep: 0,
     savedAt: Date.now(),
   };
   await easyCertDb.appState.put(cleared);
@@ -214,6 +223,7 @@ export async function applyImportedAppState(src: AppStateRecord): Promise<void> 
     attendeeListText: src.attendeeListText,
     customFonts: stripInvalidBlobFonts(src.customFonts ?? {}),
     textElements: src.textElements ?? [],
+    wizardStep: 0,
     savedAt: Date.now(),
   };
   await easyCertDb.appState.put(next);

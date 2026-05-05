@@ -26,9 +26,14 @@ export function resolveElementText(
   return element.value ?? "";
 }
 
-function buildFontShorthand(weight: TextElement["fontWeight"], sizePx: number, family: string): string {
+function buildFontShorthand(
+  style: TextElement["fontStyle"],
+  weight: TextElement["fontWeight"],
+  sizePx: number,
+  family: string
+): string {
   // Quote the family so multi-word names ("Times New Roman") still parse.
-  return `${weight} ${sizePx}px "${family}"`;
+  return `${style} ${weight} ${sizePx}px "${family}"`;
 }
 
 /**
@@ -42,22 +47,25 @@ export function measureTextElement(
   canvasWidth: number
 ): ResolvedText | null {
   if (!text || !text.trim()) return null;
+  const fontStyle = element.fontStyle ?? "normal";
+  const textDecoration = element.textDecoration ?? "none";
 
   const maxWidth = Math.max(0, element.maxWidthPct * canvasWidth);
   let fontSize = element.fontSize;
-  ctx.font = buildFontShorthand(element.fontWeight, fontSize, element.fontFamily);
+  ctx.font = buildFontShorthand(fontStyle, element.fontWeight, fontSize, element.fontFamily);
   let measured = ctx.measureText(text).width;
 
   if (measured > maxWidth && maxWidth > 0) {
     const shrunk = Math.floor(fontSize * (maxWidth / measured));
     fontSize = Math.max(MIN_FONT_SIZE_PX, shrunk);
-    ctx.font = buildFontShorthand(element.fontWeight, fontSize, element.fontFamily);
+    ctx.font = buildFontShorthand(fontStyle, element.fontWeight, fontSize, element.fontFamily);
     measured = ctx.measureText(text).width;
   }
 
   // Approximate text box height. Canvas does not expose line-height; use a 1.2 factor
   // matching typical CSS defaults for selection bbox sizing.
-  const height = fontSize * 1.2;
+  const underlineExtra = textDecoration === "underline" ? Math.max(2, fontSize * 0.12) : 0;
+  const height = fontSize * 1.2 + underlineExtra;
   return { text, fontSize, width: measured, height };
 }
 
@@ -75,16 +83,33 @@ export function drawTextElement(
 ): void {
   const measurement = measureTextElement(ctx, text, element, canvasWidth);
   if (!measurement) return;
+  const fontStyle = element.fontStyle ?? "normal";
+  const textDecoration = element.textDecoration ?? "none";
 
   const x = element.x * canvasWidth;
   const y = element.y * canvasHeight;
 
   ctx.save();
-  ctx.font = buildFontShorthand(element.fontWeight, measurement.fontSize, element.fontFamily);
+  ctx.font = buildFontShorthand(
+    fontStyle,
+    element.fontWeight,
+    measurement.fontSize,
+    element.fontFamily
+  );
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = element.color;
   ctx.fillText(measurement.text, x, y);
+  if (textDecoration === "underline") {
+    const underlineY = y + measurement.fontSize * 0.52;
+    const underlineHalfWidth = measurement.width / 2;
+    ctx.lineWidth = Math.max(1, measurement.fontSize * 0.06);
+    ctx.beginPath();
+    ctx.moveTo(x - underlineHalfWidth, underlineY);
+    ctx.lineTo(x + underlineHalfWidth, underlineY);
+    ctx.strokeStyle = element.color;
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -124,6 +149,7 @@ export function drawCertificateToCanvas(
 
 export type ElementBBox = {
   id: string;
+  type: TextElement["type"];
   /** Bounding box left edge in canvas pixels. */
   left: number;
   /** Bounding box top edge in canvas pixels. */
@@ -152,6 +178,7 @@ export function measureElementBBoxes(
     const cy = element.y * canvasHeight;
     out.push({
       id: element.id,
+      type: element.type,
       left: cx - m.width / 2,
       top: cy - m.height / 2,
       width: m.width,

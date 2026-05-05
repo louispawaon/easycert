@@ -47,6 +47,14 @@ function coerceFontWeight(raw: unknown): TextElement["fontWeight"] {
   return "normal";
 }
 
+function coerceFontStyle(raw: unknown): TextElement["fontStyle"] {
+  return raw === "italic" ? "italic" : "normal";
+}
+
+function coerceTextDecoration(raw: unknown): TextElement["textDecoration"] {
+  return raw === "underline" ? "underline" : "none";
+}
+
 function isLegacyShape(el: LegacyTextElement): boolean {
   // Legacy elements either expose `text` instead of `value`, or carry pixel
   // coordinates (>1) or omit `maxWidthPct`.
@@ -133,7 +141,9 @@ export function migrateTextElement(
     maxWidthPct,
     fontSize,
     fontFamily: el.fontFamily,
+    fontStyle: coerceFontStyle(el.fontStyle),
     fontWeight: coerceFontWeight(el.fontWeight),
+    textDecoration: coerceTextDecoration(el.textDecoration),
     color: el.color,
     value,
   };

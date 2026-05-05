@@ -35,7 +35,7 @@ npm install
 ```bash
 npm run dev
 ```
-5. Open your browser and visit: `http://localhost:3000`
+5. Open your browser and visit `http://localhost:3000` for the landing page, or go directly to the certificate workspace at `http://localhost:3000/generate`
 
 ## Contributing
 We welcome contributions! Here's how to get started:

@@ -2,6 +2,7 @@ import {
   Inter,
   Roboto,
   Open_Sans,
+  Archivo,
   Montserrat,
   Lato,
   Poppins,
@@ -17,6 +18,11 @@ import {
 } from "@/lib/fonts-cache";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const archivo = Archivo({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-archivo",
+});
 const roboto = Roboto({
   subsets: ["latin"],
   weight: ["400", "700"],
@@ -40,6 +46,7 @@ export const FONT_MAP = {
   Arial: { variable: "--font-arial" },
   "Times New Roman": { variable: "--font-times-new-roman" },
   "Courier New": { variable: "--font-courier-new" },
+  Archivo: archivo,
   Inter: inter,
   Roboto: roboto,
   "Open Sans": openSans,

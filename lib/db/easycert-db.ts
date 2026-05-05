@@ -2,6 +2,7 @@ import Dexie, { type Table } from "dexie";
 import type { TextElement } from "@/types/types";
 
 export type AppStateId = "default";
+export type PersistedWizardStep = 0 | 1 | 2;
 
 export interface AppStateRecord {
   id: AppStateId;
@@ -10,6 +11,7 @@ export interface AppStateRecord {
   attendeeListText?: string;
   customFonts?: Record<string, string>;
   textElements?: TextElement[];
+  wizardStep?: PersistedWizardStep;
   /** Last successful IndexedDB write (ms). */
   savedAt?: number;
 }
