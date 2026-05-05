@@ -18,25 +18,12 @@ export function Header() {
                 className="object-contain dark:invert"
               />
             </div>
-            <div className="hidden md:flex items-center gap-2">
-              <h1 className="text-2xl font-bold">EasyCert</h1>
-              <Badge variant="secondary" className="text-xs">
-                Beta
-              </Badge>
-            </div>
           </Link>
-          <div className="md:hidden">
-            <Badge variant="secondary" className="text-xs">
-              Beta
-            </Badge>
-          </div>
         </div>
-        <Link
-          href="/generate"
-          className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors shrink-0"
-        >
-          Generator
-        </Link>
+        <div
+          id="generate-header-actions"
+          className="flex items-center justify-end gap-2 shrink-0 min-w-0"
+        />
       </div>
     </header>
   );

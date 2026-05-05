@@ -5,7 +5,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Smartphone } from "lucide-react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-
 export const metadata: Metadata = {
   title: "Certificate Generation",
   description: "Automate your certificate generation process with EasyCert",
@@ -45,12 +44,6 @@ export default function GeneratePage() {
       </div>
       <Header />
       <main className="container mx-auto px-4 py-6 sm:py-8">
-        <div className="mb-6 sm:mb-8 text-center px-2">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Certificate Generation Made Easy</h2>
-          <p className="mt-2 text-sm sm:text-base text-muted-foreground">
-            Upload your certificate design, add your attendee list, and generate personalized certificates in seconds.
-          </p>
-        </div>
         <SessionRestoreGate>
           <ProjectWorkspace />
         </SessionRestoreGate>
