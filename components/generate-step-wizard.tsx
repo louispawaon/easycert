@@ -81,7 +81,7 @@ export function GenerateStepWizard({
                   className={cn(
                     "flex size-(--wizard-badge-size) shrink-0 items-center justify-center rounded-full text-xl font-black tabular-nums sm:text-5xl",
                     status === "done" &&
-                      "bg-success/15 text-success-foreground [&_svg]:text-success-foreground",
+                      "bg-success/15 text-success [&_svg]:text-success",
                     status === "current" && "bg-foreground text-background",
                     status === "next" && "bg-muted text-muted-foreground"
                   )}

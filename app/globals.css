@@ -90,16 +90,16 @@
 
    /* Forms & Feedback */
    --destructive: 0 84% 60%;         /* Red */
-   --destructive-foreground: 0 84% 60%;
+   --destructive-foreground: 0 0% 98%;
    
    --info: 217 91% 60%;              /* Blue */
-   --info-foreground: 217 91% 60%;
+   --info-foreground: 0 0% 98%;
    
    --warning: 38 92% 50%;            /* Orange */
-   --warning-foreground: 38 92% 50%;
+   --warning-foreground: 0 0% 10%;
    
    --success: 161 84% 39%;           /* Green */
-   --success-foreground: 161 84% 39%;
+   --success-foreground: 0 0% 98%;
 
    /* Borders & Inputs */
    --border: 0 0% 83%;               /* #d4d4d4 */
@@ -143,16 +143,16 @@
     --accent-foreground: 0 0% 92%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
     
     --info: 217 91% 60%;
-    --info-foreground: 217 91% 60%;
+    --info-foreground: 0 0% 98%;
     
     --warning: 38 92% 50%;
-    --warning-foreground: 38 92% 50%;
+    --warning-foreground: 0 0% 10%;
     
     --success: 161 84% 39%;
-    --success-foreground: 161 84% 39%;
+    --success-foreground: 0 0% 98%;
 
     --border: 0 0% 25%;               /* #3f3f3f */
     --input: 0 0% 25%;
