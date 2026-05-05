@@ -1,9 +1,23 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useLiveQuery } from "dexie-react-hooks";
 import { FileUpload } from "@/components/file-upload/index";
 import { CertificateDesigner } from "@/components/certificate-designer/index";
+import { CertificateGenerator } from "@/components/certificate-designer/CertificateGenerator";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { GenerateStepWizard } from "@/components/generate-step-wizard";
+import { useCertificateDesigner } from "@/hooks/useCertificateDesigner";
+import { useDesignerUiStore, type WizardStepIndex } from "@/store/designer-ui-store";
 import {
   Dialog,
   DialogContent,
@@ -16,21 +30,51 @@ import { useToast } from "@/hooks/useToast";
 import {
   applyImportedAppState,
   loadAppState,
+  saveWizardStep,
   stashCurrentProjectAsRecovery,
 } from "@/lib/db/app-state";
-import type { AppStateRecord } from "@/lib/db/easycert-db";
+import { easyCertDb, type AppStateRecord } from "@/lib/db/easycert-db";
 import { isRestorableProject } from "@/lib/db/session-utils";
 import { readFileAsUtf8, downloadEasycertFile } from "@/lib/project/easycert-file";
 import { Download, Upload } from "lucide-react";
 
 export function ProjectWorkspace() {
+  const designer = useCertificateDesigner();
+  const wizardStep = useDesignerUiStore((s) => s.wizardStep);
+  const setWizardStep = useDesignerUiStore((s) => s.setWizardStep);
+  const hasHydratedWizardStepRef = useRef(false);
+  const appRow = useLiveQuery(() => easyCertDb.appState.get("default"));
+
   const [mountKey, setMountKey] = useState(0);
+  const [headerActionsEl, setHeaderActionsEl] = useState<HTMLElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [overwriteOpen, setOverwriteOpen] = useState(false);
   const pendingAppRef = useRef<AppStateRecord | null>(null);
 
   const bumpMount = () => setMountKey((k) => k + 1);
+
+  const { imageUrl, attendeesCount, namePlaceholdersCount } = designer;
+
+  const canAdvanceFromUpload = Boolean(imageUrl) && attendeesCount > 0;
+  const canAdvanceFromDesign =
+    Boolean(imageUrl) && attendeesCount > 0 && namePlaceholdersCount > 0;
+
+  const canGoNext = useMemo(() => {
+    if (wizardStep === 0) return canAdvanceFromUpload;
+    if (wizardStep === 1) return canAdvanceFromDesign;
+    return false;
+  }, [wizardStep, canAdvanceFromUpload, canAdvanceFromDesign]);
+
+  const handleBack = useCallback(() => {
+    if (wizardStep === 0) return;
+    setWizardStep((wizardStep - 1) as WizardStepIndex);
+  }, [wizardStep, setWizardStep]);
+
+  const handleNext = useCallback(() => {
+    if (!canGoNext || wizardStep >= 2) return;
+    setWizardStep((wizardStep + 1) as WizardStepIndex);
+  }, [canGoNext, wizardStep, setWizardStep]);
 
   const handleExport = useCallback(async () => {
     try {
@@ -62,6 +106,7 @@ export function ProjectWorkspace() {
       try {
         await applyImportedAppState(app);
         bumpMount();
+        setWizardStep(0);
         toast({
           title: "Project imported",
           description: "Your workspace has been updated.",
@@ -74,7 +119,7 @@ export function ProjectWorkspace() {
         });
       }
     },
-    [toast]
+    [toast, setWizardStep]
   );
 
   const finishImportIfNeeded = useCallback(
@@ -114,6 +159,19 @@ export function ProjectWorkspace() {
     [finishImportIfNeeded, toast]
   );
 
+  const wizardStepNav = (
+    <>
+      <Button type="button" variant="outline" disabled={wizardStep === 0} onClick={handleBack}>
+        Back
+      </Button>
+      {wizardStep < 2 ? (
+        <Button type="button" disabled={!canGoNext} onClick={handleNext}>
+          Next
+        </Button>
+      ) : null}
+    </>
+  );
+
   const confirmOverwrite = useCallback(async () => {
     const app = pendingAppRef.current;
     pendingAppRef.current = null;
@@ -127,25 +185,60 @@ export function ProjectWorkspace() {
     await runImport(app);
   }, [runImport]);
 
+  useEffect(() => {
+    setHeaderActionsEl(document.getElementById("generate-header-actions"));
+  }, []);
+
+  useEffect(() => {
+    if (appRow === undefined || hasHydratedWizardStepRef.current) return;
+    const persisted = appRow.wizardStep;
+    const nextStep: WizardStepIndex =
+      persisted === 0 || persisted === 1 || persisted === 2 ? persisted : 0;
+    setWizardStep(nextStep);
+    hasHydratedWizardStepRef.current = true;
+  }, [appRow, setWizardStep]);
+
+  useEffect(() => {
+    if (!hasHydratedWizardStepRef.current) return;
+    void saveWizardStep(wizardStep);
+  }, [wizardStep]);
+
   return (
     <>
-      <div className="flex flex-wrap justify-end gap-2 mb-2">
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          accept=".easycert,.json,application/json"
-          onChange={onFileSelected}
-        />
-        <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-          <Upload className="h-4 w-4 mr-2" />
-          Import .easycert
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => void handleExport()}>
-          <Download className="h-4 w-4 mr-2" />
-          Export .easycert
-        </Button>
-      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".easycert,.json,application/json"
+        onChange={onFileSelected}
+      />
+      {headerActionsEl
+        ? createPortal(
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import .easycert
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => void handleExport()}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export .easycert
+              </Button>
+            </>,
+            headerActionsEl
+          )
+        : null}
 
       <Dialog
         open={overwriteOpen}
@@ -180,8 +273,41 @@ export function ProjectWorkspace() {
       </Dialog>
 
       <div key={mountKey} className="grid gap-8">
-        <FileUpload />
-        <CertificateDesigner />
+        <div className="w-full">
+          <GenerateStepWizard currentStepIndex={wizardStep} />
+        </div>
+
+        {wizardStep === 0 ? <FileUpload wizardFooter={wizardStepNav} /> : null}
+
+        {wizardStep === 1 ? <CertificateDesigner {...designer} wizardFooter={wizardStepNav} /> : null}
+
+        {wizardStep === 2 ? (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-4xl font-semibold">Generate Certificates</CardTitle>
+              <CardDescription className="text-2xl text-muted-foreground font-light italic">
+                Generate certificates for all attendees in your list
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CertificateGenerator
+                imageUrl={designer.imageUrl}
+                attendeesCount={designer.attendeesCount}
+                textElementsCount={designer.textElementsCount}
+                namePlaceholdersCount={designer.namePlaceholdersCount}
+                isGenerating={designer.isGenerating}
+                pageSize={designer.pageSize}
+                onPageSizeChange={designer.setPageSize}
+                onGenerate={designer.generateCertificates}
+                onGeneratePDF={designer.generateCertificatesPDF}
+                onPrint={designer.printCertificates}
+              />
+            </CardContent>
+            <CardFooter className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-6">
+              {wizardStepNav}
+            </CardFooter>
+          </Card>
+        ) : null}
       </div>
     </>
   );

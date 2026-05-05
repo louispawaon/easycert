@@ -87,8 +87,8 @@ export function SessionRestoreGate({ children }: { children: React.ReactNode }) 
                 left off, or start fresh.
               </span>
               <span className="block text-foreground">
-                If you start fresh, we keep a backup in IndexedDB and download a JSON file so you
-                don&apos;t lose your work.
+                If you start fresh, we&apos;ll save a backup and download a copy so your work stays
+                safe.
               </span>
             </DialogDescription>
           </DialogHeader>
