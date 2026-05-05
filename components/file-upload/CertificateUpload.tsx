@@ -17,7 +17,7 @@ export function CertificateUpload({
 }: CertificateUploadProps) {
   return (
     <div>
-      <Label htmlFor="certificate">Certificate Template</Label>
+      <Label htmlFor="certificate" className="uppercase font-semibold">Certificate Template</Label>
       {imagePreview ? (
         <div className="mt-2 relative rounded-md overflow-hidden border w-full h-[92%]">
           <img
@@ -25,10 +25,10 @@ export function CertificateUpload({
             alt="Certificate Preview"
             className="w-full h-auto object-contain max-h-[300px]"
           />
-          <Button 
-            variant="destructive" 
-            size="icon" 
-            className="absolute top-2 right-2 h-8 w-8 rounded-full"
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute top-2 right-2 h-8 w-8 rounded-full border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
             onClick={handleClearCertificate}
           >
             <X className="h-4 w-4" />

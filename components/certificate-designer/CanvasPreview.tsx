@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TextElement } from "@/types/types";
 import { useFontLoader } from "@/hooks/useFontLoader";
 import { useCertificateTemplateImage } from "@/hooks/useCertificateTemplateImage";
+import { cn } from "@/lib/utils";
 import {
   drawCertificateToCanvas,
   measureElementBBoxes,
@@ -18,9 +19,14 @@ interface CanvasPreviewProps {
   onElementSelect: (id: string | null) => void;
   onElementMove: (id: string, x: number, y: number) => void;
   imageDimensions: { width: number; height: number };
+  /** When set, `name` elements render this attendee instead of the placeholder. */
+  previewAttendeeName?: string | null;
 }
 
-const DESIGN_HEIGHT_PX = 500;
+const DESIGN_HEIGHT_MIN_PX = 220;
+const DESIGN_HEIGHT_MAX_PX = 500;
+const DESIGN_HEIGHT_VIEWPORT = "42vh";
+const DESIGN_EMPTY_MIN_PX = 260;
 
 export function CanvasPreview({
   imageUrl,
@@ -29,11 +35,13 @@ export function CanvasPreview({
   onElementSelect,
   onElementMove,
   imageDimensions,
+  previewAttendeeName = null,
 }: CanvasPreviewProps) {
   useFontLoader();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { image: templateImg } = useCertificateTemplateImage(imageUrl);
   const [bboxes, setBBoxes] = useState<ElementBBox[]>([]);
+  const [hoveredBoxId, setHoveredBoxId] = useState<string | null>(null);
 
   // Re-render the canvas whenever the template, elements, or selection change.
   // Selection does not affect the canvas image itself but bbox recompute keeps
@@ -49,10 +57,16 @@ export function CanvasPreview({
       await awaitFontsReady(textElements);
       if (cancelled) return;
       try {
-        drawCertificateToCanvas(canvas, templateImg, textElements);
+        const drawOpts =
+          previewAttendeeName != null && previewAttendeeName !== ""
+            ? { attendeeName: previewAttendeeName }
+            : {};
+        drawCertificateToCanvas(canvas, templateImg, textElements, drawOpts);
         const ctx = canvas.getContext("2d");
         if (ctx) {
-          setBBoxes(measureElementBBoxes(ctx, textElements, canvas.width, canvas.height));
+          setBBoxes(
+            measureElementBBoxes(ctx, textElements, canvas.width, canvas.height, drawOpts)
+          );
         }
       } catch (err) {
         console.error("Designer render failed:", err);
@@ -61,7 +75,7 @@ export function CanvasPreview({
     return () => {
       cancelled = true;
     };
-  }, [templateImg, textElements]);
+  }, [templateImg, textElements, previewAttendeeName]);
 
   const aspect = useMemo(() => {
     if (imageDimensions.width && imageDimensions.height) {
@@ -74,6 +88,7 @@ export function CanvasPreview({
   }, [imageDimensions.width, imageDimensions.height, templateImg]);
 
   const hasTemplate = Boolean(imageUrl);
+  const adaptiveHeight = `clamp(${DESIGN_HEIGHT_MIN_PX}px, ${DESIGN_HEIGHT_VIEWPORT}, ${DESIGN_HEIGHT_MAX_PX}px)`;
 
   const handleOverlayMouseDown = (e: React.MouseEvent<HTMLDivElement>, id: string) => {
     e.preventDefault();
@@ -132,13 +147,13 @@ export function CanvasPreview({
       style={
         hasTemplate
           ? {
-              height: `${DESIGN_HEIGHT_PX}px`,
-              width: `${DESIGN_HEIGHT_PX * aspect}px`,
+              height: adaptiveHeight,
+              width: `calc(${adaptiveHeight} * ${aspect})`,
               maxWidth: "100%",
             }
           : {
               width: "100%",
-              minHeight: `${DESIGN_HEIGHT_PX}px`,
+              minHeight: `clamp(${DESIGN_EMPTY_MIN_PX}px, 38vh, ${DESIGN_HEIGHT_MAX_PX}px)`,
             }
       }
       onClick={handleBackgroundClick}
@@ -159,29 +174,52 @@ export function CanvasPreview({
         const canvas = canvasRef.current;
         const cw = canvas?.width || imageDimensions.width || 1;
         const ch = canvas?.height || imageDimensions.height || 1;
+        const isSelected = selectedElement === box.id;
+        const isHovered = hoveredBoxId === box.id;
+        const showTypeBadge = isSelected || isHovered;
+        const isNameElement = box.type === "name";
+        const ringBase = isNameElement ? "ring-success" : "ring-info";
+        const ringHover = isNameElement ? "hover:ring-success/60" : "hover:ring-info/60";
+        const selectedFill = isNameElement ? "bg-success/10" : "bg-info/10";
+        const badgeBase = isNameElement
+          ? "bg-success text-white"
+          : "bg-info text-white";
         return (
           <div
             key={box.id}
             role="button"
             tabIndex={0}
-            className={`absolute cursor-move ${
-              selectedElement === box.id ? "ring-2 ring-primary" : "hover:ring-1 hover:ring-primary/40"
-            }`}
+            aria-label={isNameElement ? "Name element" : "Static text element"}
+            className={cn(
+              "group absolute cursor-move border border-background/70",
+              isSelected ? `ring-2 ${ringBase} ${selectedFill}` : `hover:ring-1 ${ringHover}`
+            )}
             style={{
               left: `${(box.left / cw) * 100}%`,
               top: `${(box.top / ch) * 100}%`,
               width: `${(box.width / cw) * 100}%`,
               height: `${(box.height / ch) * 100}%`,
-              backgroundColor:
-                selectedElement === box.id ? "rgba(59,130,246,0.08)" : "transparent",
               zIndex: 10,
             }}
+            onMouseEnter={() => setHoveredBoxId(box.id)}
+            onMouseLeave={() => setHoveredBoxId((current) => (current === box.id ? null : current))}
             onMouseDown={(e) => handleOverlayMouseDown(e, box.id)}
             onClick={(e) => {
               e.stopPropagation();
               onElementSelect(box.id);
             }}
-          />
+          >
+            {showTypeBadge ? (
+              <span
+                className={cn(
+                  "pointer-events-none absolute -top-5 left-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide shadow-sm",
+                  badgeBase
+                )}
+              >
+                {isNameElement ? "Name" : "Static"}
+              </span>
+            ) : null}
+          </div>
         );
       })}
     </div>

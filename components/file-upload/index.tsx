@@ -1,11 +1,23 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import type { ReactNode } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { CertificateUpload } from "@/components/file-upload/CertificateUpload";
 import { AttendeeUpload } from "@/components/file-upload/AttendeeUpload";
 
-export function FileUpload() {
+export interface FileUploadProps {
+  wizardFooter?: ReactNode;
+}
+
+export function FileUpload({ wizardFooter }: FileUploadProps) {
   const {
     attendeeList,
     imagePreview,
@@ -20,8 +32,8 @@ export function FileUpload() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Upload Files</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-4xl font-semibold">Upload your files</CardTitle>
+        <CardDescription className="text-2xl text-muted-foreground font-light italic">
           Upload your certificate template and attendee list to get started.
         </CardDescription>
       </CardHeader>
@@ -41,6 +53,11 @@ export function FileUpload() {
           />
         </div>
       </CardContent>
+      {wizardFooter ? (
+        <CardFooter className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-6">
+          {wizardFooter}
+        </CardFooter>
+      ) : null}
     </Card>
   );
 } 

@@ -40,9 +40,15 @@ export function CertificateControls({
           const properties: Partial<TextProperties> = {};
           if (typeof raw.fontSize === "number") properties.fontSize = raw.fontSize;
           if (typeof raw.fontFamily === "string") properties.fontFamily = raw.fontFamily;
+          if (raw.fontStyle === "italic" || raw.fontStyle === "normal") {
+            properties.fontStyle = raw.fontStyle;
+          }
           if (typeof raw.color === "string") properties.color = raw.color;
           if (raw.fontWeight === "bold" || raw.fontWeight === "normal") {
             properties.fontWeight = raw.fontWeight;
+          }
+          if (raw.textDecoration === "underline" || raw.textDecoration === "none") {
+            properties.textDecoration = raw.textDecoration;
           }
           if (typeof raw.maxWidthPct === "number") {
             properties.maxWidthPct = Math.min(1, Math.max(0.05, raw.maxWidthPct));
@@ -81,8 +87,8 @@ export function CertificateControls({
   };
 
   return (
-    <div className="border rounded-md p-4">
-      <h3 className="text-lg font-medium mb-4">Add Elements</h3>
+    <div className="border rounded-md p-3 sm:p-4">
+      <h3 className="mb-3 text-base sm:text-lg font-semibold">Add Elements</h3>
       <div className="space-y-4">
         <div className="space-y-2">
           <Button 
@@ -119,7 +125,7 @@ export function CertificateControls({
                   <DialogTitle>Load Preset</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="grid w-full max-w-sm items-center gap-1.5">
+                  <div className="grid w-full items-center gap-1.5">
                     <div className="relative">
                       <Input
                         id="preset-file"

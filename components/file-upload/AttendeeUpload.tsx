@@ -19,11 +19,11 @@ export function AttendeeUpload({
 }: AttendeeUploadProps) {
   return (
     <div>
-      <Label>Attendee List</Label>
+      <Label className="uppercase font-semibold">Attendee List</Label>
       <Tabs defaultValue="upload" className="mt-2">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="upload">Upload File</TabsTrigger>
-          <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+          <TabsTrigger value="manual">Paste Names</TabsTrigger>
         </TabsList>
         <TabsContent value="upload" className="p-0 mt-2">
           <div className="flex flex-col items-center justify-center rounded-md border border-dashed p-8 w-full min-h-[300px]">

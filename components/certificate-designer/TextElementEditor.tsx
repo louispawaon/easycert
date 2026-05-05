@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Trash2, Save, Bold, ChevronDown, ChevronUp } from "lucide-react";
+import { Trash2, Save, Bold, Italic, Underline, ChevronDown, ChevronUp } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { getFontOptions } from '@/lib/fonts';
 import { useFontLoader } from '@/hooks/useFontLoader';
@@ -66,8 +66,10 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
   const extractTextProperties = (el: TextElement): TextProperties => ({
     fontSize: el.fontSize,
     fontFamily: el.fontFamily,
+    fontStyle: el.fontStyle,
     color: el.color,
     fontWeight: el.fontWeight,
+    textDecoration: el.textDecoration,
     maxWidthPct: el.maxWidthPct,
   });
 
@@ -108,12 +110,14 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
 
   const xPctDisplay = pctToDisplay(element.x);
   const yPctDisplay = pctToDisplay(element.y);
+  const fontOptions = getFontOptions();
+  const hasFontValue = fontOptions.some((option) => option.value === element.fontFamily);
 
   return (
-    <div className="border rounded-md p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">Element Properties</h3>
-        <div className="flex gap-2">
+    <div className="border rounded-md p-3 sm:p-4">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+        <h3 className="text-base sm:text-lg font-semibold">Element Properties</h3>
+        <div className="flex flex-wrap gap-2">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="icon" title="Save as Preset">
@@ -139,7 +143,13 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
               </div>
             </DialogContent>
           </Dialog>
-          <Button variant="destructive" size="icon" onClick={onRemove} title="Remove Element">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onRemove}
+            title="Remove Element"
+            className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
+          >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -172,7 +182,7 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
 
             {showFontUpload && (
               <div className="space-y-2 p-2 border rounded-md">
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     type="file"
                     accept=".ttf,.otf,.woff,.woff2"
@@ -181,6 +191,7 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
                   <Button
                     onClick={handleFontUpload}
                     disabled={!fontFile}
+                    className="w-full sm:w-auto"
                   >
                     Upload Font
                   </Button>
@@ -195,14 +206,14 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
           </div>
 
           <Select
-            value={element.fontFamily}
+            value={hasFontValue ? element.fontFamily : undefined}
             onValueChange={(value) => onUpdate('fontFamily', value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select font" />
             </SelectTrigger>
             <SelectContent>
-              {getFontOptions().map((option) => (
+              {fontOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -233,26 +244,48 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
 
         <div className="space-y-2">
           <Label>Font Style</Label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Toggle
+              variant="outline"
               pressed={element.fontWeight === 'bold'}
               onPressedChange={(pressed) => onUpdate('fontWeight', pressed ? 'bold' : 'normal')}
               aria-label="Toggle bold"
+              title="Bold"
             >
               <Bold className="h-4 w-4" />
+            </Toggle>
+            <Toggle
+              variant="outline"
+              pressed={element.fontStyle === 'italic'}
+              onPressedChange={(pressed) => onUpdate('fontStyle', pressed ? 'italic' : 'normal')}
+              aria-label="Toggle italic"
+              title="Italic"
+            >
+              <Italic className="h-4 w-4" />
+            </Toggle>
+            <Toggle
+              variant="outline"
+              pressed={element.textDecoration === 'underline'}
+              onPressedChange={(pressed) =>
+                onUpdate('textDecoration', pressed ? 'underline' : 'none')
+              }
+              aria-label="Toggle underline"
+              title="Underline"
+            >
+              <Underline className="h-4 w-4" />
             </Toggle>
           </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="text-color" className="flex items-center gap-2">Text Color</Label>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input
               id="text-color"
               type="color"
               value={element.color}
               onChange={(e) => onUpdate('color', e.target.value)}
-              className="w-12 h-10 p-1"
+              className="h-10 w-full sm:w-12 p-1"
             />
             <Input
               value={element.color}
