@@ -121,14 +121,12 @@ function CertificateNameSlot() {
   const ariaLabel = showShuffle
     ? "Sample recipient name preview"
     : "Name placeholder";
+  const nameControlLabel = finePointer
+    ? ariaLabel
+    : `${ariaLabel} Tap to cycle sample name styles.`;
 
   return (
     <div className="w-full max-w-full px-1 sm:px-2">
-      {!finePointer ? (
-        <p className="mb-1 text-center text-[clamp(0.62rem,1.6dvh,0.8125rem)] text-muted-foreground">
-          Tap to preview name styles
-        </p>
-      ) : null}
       <div
         role={finePointer ? undefined : "button"}
         tabIndex={finePointer ? undefined : 0}
@@ -136,7 +134,7 @@ function CertificateNameSlot() {
           "relative cursor-default select-none touch-manipulation rounded-md outline-none",
           !finePointer && "cursor-pointer focus-visible:ring-2 focus-visible:ring-ring"
         )}
-        aria-label={ariaLabel}
+        aria-label={nameControlLabel}
         onPointerEnter={() => finePointer && setHovering(true)}
         onPointerLeave={() => {
           if (!finePointer) return;
@@ -201,40 +199,144 @@ function CertificateNameSlot() {
 const cornerTriangle =
   "polygon(100% 100%, 100% 0%, 0% 100%)" as const;
 
-export function CertificateHero() {
+const PILLAR_DRIFT_S = 12;
+const CORNER_BREATHE_S = 15;
+
+function CertificateHeroDecor({ reducedMotion }: { reducedMotion: boolean }) {
+  const pillarEnter = reducedMotion
+    ? { duration: 0 }
+    : ({
+        x: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
+        opacity: { duration: 0.45, ease: "easeOut" as const },
+        y: {
+          duration: PILLAR_DRIFT_S,
+          repeat: Infinity,
+          repeatType: "mirror" as const,
+          ease: "easeInOut" as const,
+          delay: 0.65,
+        },
+      } as const);
+
+  const pillarInnerEnter = reducedMotion
+    ? { duration: 0 }
+    : ({
+        x: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const, delay: 0.1 },
+        opacity: { duration: 0.45, ease: "easeOut" as const, delay: 0.1 },
+        y: {
+          duration: PILLAR_DRIFT_S,
+          repeat: Infinity,
+          repeatType: "mirror" as const,
+          ease: "easeInOut" as const,
+          delay: 0.65 + PILLAR_DRIFT_S / 2,
+        },
+      } as const);
+
+  const cornerEnter = reducedMotion
+    ? { duration: 0 }
+    : ({
+        opacity: { duration: 0.45, ease: "easeOut" as const },
+        x: { duration: 0.5, ease: "easeOut" as const },
+        y: { duration: 0.5, ease: "easeOut" as const },
+        scale: {
+          duration: CORNER_BREATHE_S,
+          repeat: Infinity,
+          repeatType: "mirror" as const,
+          ease: "easeInOut" as const,
+          delay: 0.55,
+        },
+      } as const);
+
+  const cornerInnerEnter = reducedMotion
+    ? { duration: 0 }
+    : ({
+        opacity: { duration: 0.45, ease: "easeOut" as const, delay: 0.06 },
+        x: { duration: 0.5, ease: "easeOut" as const, delay: 0.06 },
+        y: { duration: 0.5, ease: "easeOut" as const, delay: 0.06 },
+        scale: {
+          duration: CORNER_BREATHE_S,
+          repeat: Infinity,
+          repeatType: "mirror" as const,
+          ease: "easeInOut" as const,
+          delay: 0.55 + CORNER_BREATHE_S / 2,
+        },
+      } as const);
+
   return (
-    <div className="certificate-hero relative flex h-full min-h-0 w-full flex-col">
-      {/* Left pillars: muted (outer) + border (inner, half width of outer) */}
+    <>
+      {/* Left pillars: transform-only motion; widths stay CSS vars (layout stable). */}
       <div
         className="pointer-events-none absolute inset-y-0 left-0 z-0 flex h-full min-h-0"
         aria-hidden
       >
-        <div className="shrink-0 bg-muted" style={{ width: "var(--pillar-outer)" }} />
-        <div className="shrink-0 bg-border" style={{ width: "var(--pillar-inner)" }} />
+        <motion.div
+          className="shrink-0 bg-muted will-change-transform"
+          style={{ width: "var(--pillar-outer)" }}
+          initial={reducedMotion ? false : { x: -14, opacity: 0.88 }}
+          animate={
+            reducedMotion
+              ? { x: 0, opacity: 1 }
+              : { x: 0, opacity: 1, y: [0, -2.5, 0] }
+          }
+          transition={pillarEnter}
+        />
+        <motion.div
+          className="shrink-0 bg-border will-change-transform"
+          style={{ width: "var(--pillar-inner)" }}
+          initial={reducedMotion ? false : { x: -14, opacity: 0.88 }}
+          animate={
+            reducedMotion
+              ? { x: 0, opacity: 1 }
+              : { x: 0, opacity: 1, y: [0, -2.5, 0] }
+          }
+          transition={pillarInnerEnter}
+        />
       </div>
 
-      {/* Right corner triangles */}
       <div
         className="certificate-hero-corner-wrap pointer-events-none absolute bottom-0 right-0 z-0"
         aria-hidden
       >
-        <div
-          className="absolute bottom-0 right-0 bg-muted"
+        <motion.div
+          className="absolute bottom-0 right-0 origin-bottom-right bg-muted will-change-transform"
           style={{
             width: "var(--corner-outer-w)",
             height: "var(--corner-outer-h)",
             clipPath: cornerTriangle,
           }}
+          initial={reducedMotion ? false : { opacity: 0, x: 12, y: 12 }}
+          animate={
+            reducedMotion
+              ? { opacity: 1, x: 0, y: 0, scale: 1 }
+              : { opacity: 1, x: 0, y: 0, scale: [1, 1.012, 1] }
+          }
+          transition={cornerEnter}
         />
-        <div
-          className="absolute bottom-0 right-0 z-1 bg-border"
+        <motion.div
+          className="absolute bottom-0 right-0 z-1 origin-bottom-right bg-border will-change-transform"
           style={{
             width: "var(--corner-inner-w)",
             height: "var(--corner-inner-h)",
             clipPath: cornerTriangle,
           }}
+          initial={reducedMotion ? false : { opacity: 0, x: 10, y: 10 }}
+          animate={
+            reducedMotion
+              ? { opacity: 1, x: 0, y: 0, scale: 1 }
+              : { opacity: 1, x: 0, y: 0, scale: [1, 1.007, 1] }
+          }
+          transition={cornerInnerEnter}
         />
       </div>
+    </>
+  );
+}
+
+export function CertificateHero() {
+  const decorReducedMotion = usePrefersReducedMotion();
+
+  return (
+    <div className="certificate-hero relative flex h-full min-h-0 w-full flex-col">
+      <CertificateHeroDecor reducedMotion={decorReducedMotion} />
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center py-3 sm:py-4 pl-[calc(var(--pillar-total)+max(1rem,env(safe-area-inset-left,0)))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:pr-[max(1.5rem,env(safe-area-inset-right,0px))] md:pr-[max(2rem,env(safe-area-inset-right,0px))]">
         <div
@@ -262,7 +364,7 @@ export function CertificateHero() {
 
           {/* Headline + name: grouped with comfortable vertical rhythm */}
           <div className="flex w-full max-w-full flex-col items-center gap-2 md:gap-3">
-            <p className="text-[clamp(0.72rem,min(2dvh,3.8vw),1.5rem)] md:text-[clamp(0.78rem,min(2.1dvh,3.8vw),1.5rem)] font-normal uppercase tracking-[0.2em]">
+            <p className="text-[clamp(0.72rem,min(2dvh,3.8vw),1.5rem)] md:text-[clamp(0.78rem,min(2.1dvh,3.8vw),1.5rem)] font-normal uppercase tracking-[0.2em] text-muted-foreground">
               Certificate of Completion
             </p>
 
@@ -282,7 +384,7 @@ export function CertificateHero() {
             </p>
           </div>
 
-          <div className="mx-auto flex w-full max-w-[min(100%,64rem)] flex-col  text-center text-[clamp(0.75rem,min(2.25dvh,4vw),1.75rem)] font-normal">
+          <div className="mx-auto flex w-full max-w-[min(100%,64rem)] flex-col  text-center text-[clamp(0.75rem,min(2.25dvh,4vw),1.75rem)] font-normal text-muted-foreground">
             <p className="leading-normal">
               Stop manually editing one certificate at a time.
             </p>
