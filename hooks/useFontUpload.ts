@@ -8,30 +8,30 @@ export function useFontUpload() {
   const { toast } = useToast();
   const [fontFile, setFontFile] = useState<File | null>(null);
 
-  const handleFontUpload = async () => {
-    if (!fontFile) return;
-    
+  const handleFontUpload = async (): Promise<string | null> => {
+    if (!fontFile) return null;
+
+    const fontName = fontFile.name.replace(/\.[^/.]+$/, "");
+
     try {
-      // Extract font name from file name (remove extension)
-      const fontName = fontFile.name.replace(/\.[^/.]+$/, "");
-      
-      // Convert file to base64 data URL for persistent storage
       const base64Url = await convertFileToBase64(fontFile);
-      
+
       addCustomFont(fontName, base64Url);
       setFontFile(null);
-      
+
       toast({
-        title: "Font Uploaded",
-        description: `${fontName} has been successfully added to your font list.`,
+        title: "Font added",
+        description: `${fontName} is in your font list and applied to this text element.`,
       });
+      return fontName;
     } catch (error) {
-      console.error('Error uploading font:', error);
+      console.error("Error uploading font:", error);
       toast({
         title: "Upload Failed",
         description: "There was an error uploading the font. Please try again.",
         variant: "destructive",
       });
+      return null;
     }
   };
 

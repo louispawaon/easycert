@@ -85,8 +85,12 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
   };
 
   const onFontUploadClick = async () => {
-    await handleFontUpload();
+    const addedName = await handleFontUpload();
     if (fontFileInputRef.current) fontFileInputRef.current.value = "";
+    if (addedName) {
+      onUpdate("fontFamily", addedName);
+      setShowFontUpload(false);
+    }
   };
 
   useFontLoader(element.fontFamily);
@@ -281,8 +285,11 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
                   className="w-full"
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  Add font to list
+                  Add & use font
                 </Button>
+                <p className="text-center text-xs text-muted-foreground">
+                  Applies to the selected text element only.
+                </p>
               </div>
             )}
           </div>

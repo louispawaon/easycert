@@ -11,7 +11,7 @@ export function useDesignerTextPersistence() {
   const { toast } = useToast();
   const [textElements, setTextElements] = useState<TextElement[]>([]);
   const appStateRow = useLiveQuery(() => easyCertDb.appState.get("default"));
-  const didHydrateTextElements = useRef(false);
+  const lastSyncedSavedAtRef = useRef<number | null>(null);
   const skipNextTextElementsPersist = useRef(true);
   const debounceTimerRef = useRef<number | null>(null);
   const dirtyTextRef = useRef(false);
@@ -32,16 +32,17 @@ export function useDesignerTextPersistence() {
   );
 
   useEffect(() => {
-    if (appStateRow === undefined || didHydrateTextElements.current) return;
-    didHydrateTextElements.current = true;
-    if (appStateRow.textElements?.length) {
-      setTextElements(appStateRow.textElements);
-    }
+    if (appStateRow === undefined) return;
+    const rowSavedAt = appStateRow.savedAt ?? null;
+    if (lastSyncedSavedAtRef.current === rowSavedAt) return;
+    if (dirtyTextRef.current) return;
+    lastSyncedSavedAtRef.current = rowSavedAt;
+    setTextElements(appStateRow.textElements ?? []);
     skipNextTextElementsPersist.current = true;
   }, [appStateRow]);
   
   useEffect(() => {
-    if (!didHydrateTextElements.current) return;
+    if (appStateRow === undefined) return;
     if (skipNextTextElementsPersist.current) {
       skipNextTextElementsPersist.current = false;
       return;

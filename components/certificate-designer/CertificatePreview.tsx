@@ -98,7 +98,7 @@ export function CertificatePreview({
       </div>
 
       <div
-        className="relative border rounded-md overflow-hidden bg-white mx-auto"
+        className="relative border rounded-md overflow-hidden bg-background mx-auto"
         style={{
           height: `${PREVIEW_HEIGHT_PX}px`,
           width: `${PREVIEW_HEIGHT_PX * aspect}px`,

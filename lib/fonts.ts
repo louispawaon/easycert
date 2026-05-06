@@ -80,11 +80,29 @@ function invalidateFontOptionsCache(): void {
   fontOptionsCache = null;
 }
 
+function injectCustomFontFaceIfNeeded(name: string, fontUrl: string): void {
+  if (typeof document === "undefined") return;
+  const id = `easycert-font-face-${encodeURIComponent(name)}`;
+  const family = JSON.stringify(name);
+  const src = JSON.stringify(fontUrl);
+  const css = `@font-face{font-family:${family};src:url(${src});}`;
+  const existing = document.getElementById(id);
+  if (existing instanceof HTMLStyleElement) {
+    if (existing.textContent !== css) existing.textContent = css;
+    return;
+  }
+  const style = document.createElement("style");
+  style.id = id;
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+
 export function addCustomFont(name: string, fontUrl: string) {
   updateCustomFontsCache((fonts) => {
     fonts[name] = fontUrl;
     return fonts;
   });
+  injectCustomFontFaceIfNeeded(name, fontUrl);
   persistCustomFontsClient();
   invalidateFontOptionsCache();
 

@@ -141,7 +141,7 @@ export function CanvasPreview({
 
   return (
     <div
-      className={`relative border rounded-md overflow-hidden bg-white ${
+      className={`relative border rounded-md overflow-hidden bg-background ${
         hasTemplate ? "mx-auto" : "w-full"
       }`}
       style={
