@@ -39,9 +39,9 @@ export function useDesignerTextPersistence() {
     }
     skipNextTextElementsPersist.current = true;
   }, [appStateRow]);
-
+  
   useEffect(() => {
-    if (appStateRow === undefined || !didHydrateTextElements.current) return;
+    if (!didHydrateTextElements.current) return;
     if (skipNextTextElementsPersist.current) {
       skipNextTextElementsPersist.current = false;
       return;
@@ -62,7 +62,7 @@ export function useDesignerTextPersistence() {
         debounceTimerRef.current = null;
       }
     };
-  }, [textElements, appStateRow, persistError]);
+  }, [textElements, persistError]);
 
   useEffect(() => {
     const flush = () => {

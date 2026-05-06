@@ -5,7 +5,7 @@ export function Footer() {
     <footer className="border-t py-6">
       <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
         &copy; {new Date().getFullYear()} EasyCert. Made with ❤️ by{' '}
-        <Link href="https://louispawaon.vercel.app/" className="font-semibold">
+        <Link href="https://louispawaon.pages.dev/" className="font-semibold">
           @miggy_pawaon
         </Link>
         <span className="mx-2">|</span>
