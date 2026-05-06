@@ -16,7 +16,7 @@ import {
   certificateHeroShuffleNames,
   shuffleNameFontFamily,
 } from "@/lib/certificate-hero-shuffle-names";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/cn";
 
 const SHUFFLE_EVERY_MS = 1000;
 

@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { Archivo } from "next/font/google";
 import { Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/cn";
 
 const archivoWizard = Archivo({
   subsets: ["latin"],

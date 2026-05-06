@@ -5,7 +5,7 @@ import * as ToastPrimitives from '@radix-ui/react-toast';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { X } from 'lucide-react';
 
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/cn";
 
 const ToastProvider = ToastPrimitives.Provider;
 
@@ -77,7 +77,8 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      'absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-hidden focus:ring-2 group-hover:opacity-100 group-[.destructive]:text-destructive hover:group-[.destructive]:bg-destructive/25 hover:group-[.destructive]:text-destructive focus:group-[.destructive]:ring-destructive',
+      'absolute right-2 top-2 rounded-md p-1 text-foreground/60 opacity-100 transition-colors hover:bg-accent hover:text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring',
+      'group-[.destructive]:text-foreground group-[.destructive]:hover:bg-black/20 group-[.destructive]:focus:ring-offset-0 group-[.destructive]:focus:ring-white/80',
       className
     )}
     toast-close=""

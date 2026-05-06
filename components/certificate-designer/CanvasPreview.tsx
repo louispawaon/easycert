@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TextElement } from "@/types/types";
 import { useFontLoader } from "@/hooks/useFontLoader";
 import { useCertificateTemplateImage } from "@/hooks/useCertificateTemplateImage";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/cn";
 import {
   drawCertificateToCanvas,
   measureElementBBoxes,
