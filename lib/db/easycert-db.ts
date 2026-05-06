@@ -4,11 +4,16 @@ import type { TextElement } from "@/types/types";
 export type AppStateId = "default";
 export type PersistedWizardStep = 0 | 1 | 2;
 
+/** Which attendee-entry UI was last active on the upload step. */
+export type AttendeeEntryTab = "upload" | "manual";
+
 export interface AppStateRecord {
   id: AppStateId;
   certificateImageUrl?: string;
   /** `undefined` = never persisted (show demo names in UI). `""` = user cleared. */
   attendeeListText?: string;
+  /** Remember Upload vs Paste when leaving the upload wizard step. */
+  attendeeEntryTab?: AttendeeEntryTab;
   customFonts?: Record<string, string>;
   textElements?: TextElement[];
   wizardStep?: PersistedWizardStep;

@@ -71,12 +71,22 @@ function persistCustomFontsClient(): void {
   );
 }
 
+let fontOptionsCache: {
+  customKeysSignature: string;
+  options: Array<{ label: string; value: string }>;
+} | null = null;
+
+function invalidateFontOptionsCache(): void {
+  fontOptionsCache = null;
+}
+
 export function addCustomFont(name: string, fontUrl: string) {
   updateCustomFontsCache((fonts) => {
     fonts[name] = fontUrl;
     return fonts;
   });
   persistCustomFontsClient();
+  invalidateFontOptionsCache();
 
   return { variable: `--font-custom-${name.toLowerCase().replace(/ /g, "-")}` };
 }
@@ -87,9 +97,17 @@ export function removeCustomFont(name: string) {
     return fonts;
   });
   persistCustomFontsClient();
+  invalidateFontOptionsCache();
 }
 
 export function getFontOptions() {
+  const customKeysSignature = Object.keys(getCustomFontsCache())
+    .sort()
+    .join("\0");
+  if (fontOptionsCache?.customKeysSignature === customKeysSignature) {
+    return fontOptionsCache.options;
+  }
+
   const baseOptions = [
     { label: "Arial", value: "Arial" },
     { label: "Times New Roman", value: "Times New Roman" },
@@ -102,13 +120,15 @@ export function getFontOptions() {
       })),
   ];
 
-  const customFonts = getCustomFonts();
+  const customFonts = getCustomFontsCache();
   const customOptions = Object.keys(customFonts).map((key) => ({
     label: key,
     value: key,
   }));
 
-  return [...baseOptions, ...customOptions];
+  const options = [...baseOptions, ...customOptions];
+  fontOptionsCache = { customKeysSignature, options };
+  return options;
 }
 
 export type FontKey = keyof typeof FONT_MAP;

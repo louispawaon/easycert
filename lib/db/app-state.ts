@@ -5,7 +5,6 @@ import {
   notifyCertificateImageCleared,
   notifyCertificateImageUploaded,
 } from "@/store/certificate-image-bridge";
-import { isRestorableProject } from "@/lib/db/session-utils";
 import {
   hasLegacyTextElements,
   migrateTextElements,
@@ -15,10 +14,14 @@ import {
   easyCertDb,
   type AppStateRecord,
   type AppStateId,
-  type SessionRecoveryId,
+  type AttendeeEntryTab,
 } from "./easycert-db";
 
 const DEFAULT_ID: AppStateId = "default";
+
+/** Set by migrate when legacy localStorage fonts JSON fails to parse — UI may toast once. */
+export const SESSION_LEGACY_FONTS_PARSE_FAILED_KEY =
+  "easycert_session_legacy_fonts_json_parse_failed";
 
 function stripInvalidBlobFonts(fonts: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
@@ -28,6 +31,14 @@ function stripInvalidBlobFonts(fonts: Record<string, string>): Record<string, st
     out[name] = url;
   }
   return out;
+}
+
+/** Stored fonts include ephemeral blob URLs that must be stripped from IndexedDB/cache. */
+function customFontsNeedsBlobSanitize(fonts: Record<string, string> | undefined): boolean {
+  if (!fonts) return false;
+  return Object.values(fonts).some(
+    (u) => typeof u === "string" && u.startsWith("blob:")
+  );
 }
 
 async function getOrCreateRow(): Promise<AppStateRecord> {
@@ -50,6 +61,7 @@ async function patchAppState(partial: Partial<Omit<AppStateRecord, "id">>): Prom
     id: DEFAULT_ID,
     certificateImageUrl: cur.certificateImageUrl,
     attendeeListText: cur.attendeeListText,
+    attendeeEntryTab: cur.attendeeEntryTab,
     customFonts: cur.customFonts ?? {},
     textElements: cur.textElements ?? [],
     wizardStep: cur.wizardStep ?? 0,
@@ -81,8 +93,14 @@ export async function migrateFromLocalStorage(): Promise<void> {
     try {
       const parsed = JSON.parse(fontsRaw) as Record<string, string>;
       customFonts = { ...customFonts, ...parsed };
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.warn("[EasycertLegacyFontsParse] Failed JSON.parse(customFonts)", err);
+      try {
+        sessionStorage.setItem(SESSION_LEGACY_FONTS_PARSE_FAILED_KEY, "1");
+      } catch {
+        /* ignore quota / unavailable */
+      }
+      /* Persist continues with IndexedDB/customFonts subset only; stripped below. */
     }
   }
   customFonts = stripInvalidBlobFonts(customFonts);
@@ -91,6 +109,7 @@ export async function migrateFromLocalStorage(): Promise<void> {
     id: DEFAULT_ID,
     certificateImageUrl: current?.certificateImageUrl ?? img ?? undefined,
     attendeeListText: current?.attendeeListText ?? (attendees !== null ? attendees : undefined),
+    attendeeEntryTab: current?.attendeeEntryTab,
     customFonts,
     textElements: current?.textElements ?? [],
     wizardStep: current?.wizardStep ?? 0,
@@ -129,21 +148,33 @@ async function migrateTextElementsIfNeeded(): Promise<void> {
   await patchAppState({ textElements: migrated });
 }
 
-/** Run after DB open: migrate legacy keys and sync font cache from DB. */
-export async function hydrateCachesFromDb(): Promise<void> {
+let hydrateInFlight: Promise<void> | null = null;
+
+/** Migrate legacy LS, sync caches, sanitize blob font URLs — idempotent. */
+async function hydrateCachesFromDbInner(): Promise<void> {
   await migrateFromLocalStorage();
   const row = await easyCertDb.appState.get(DEFAULT_ID);
   setCustomFontsCache(stripInvalidBlobFonts(row?.customFonts ?? {}));
-  if (row?.customFonts && JSON.stringify(stripInvalidBlobFonts(row.customFonts)) !== JSON.stringify(row.customFonts)) {
+  if (
+    row?.customFonts &&
+    customFontsNeedsBlobSanitize(row.customFonts)
+  ) {
     await patchAppState({ customFonts: stripInvalidBlobFonts(row.customFonts) });
   }
   await migrateTextElementsIfNeeded();
 }
 
-// Fire-and-forget: do not return a Promise or Dexie will block db.open() on this work,
-// which can deadlock or stall the UI gate that awaits open().
+/** Deduplicate concurrent hydrate (Dexie ready + loadAppState + imports). */
+export async function ensureHydrated(): Promise<void> {
+  if (hydrateInFlight) return hydrateInFlight;
+  hydrateInFlight = hydrateCachesFromDbInner().finally(() => {
+    hydrateInFlight = null;
+  });
+  return hydrateInFlight;
+}
+
 easyCertDb.on("ready", () => {
-  void hydrateCachesFromDb();
+  void ensureHydrated();
 });
 
 export async function saveCertificateImage(url: string | null): Promise<void> {
@@ -154,6 +185,10 @@ export async function saveCertificateImage(url: string | null): Promise<void> {
 
 export async function saveAttendeeListText(text: string): Promise<void> {
   await patchAppState({ attendeeListText: text });
+}
+
+export async function saveAttendeeEntryTab(tab: AttendeeEntryTab): Promise<void> {
+  await patchAppState({ attendeeEntryTab: tab });
 }
 
 export async function saveCustomFonts(fonts: Record<string, string>): Promise<void> {
@@ -169,25 +204,17 @@ export async function saveWizardStep(step: WizardStepIndex): Promise<void> {
 }
 
 /** Open DB, run legacy migration + font cache sync, then read the active row. */
-export async function loadAppState(): Promise<AppStateRecord | undefined> {
+export async function loadAppState(): Promise<AppStateRecord | null> {
   await easyCertDb.open();
-  await hydrateCachesFromDb();
-  return easyCertDb.appState.get(DEFAULT_ID);
+  await ensureHydrated();
+  const row = await easyCertDb.appState.get(DEFAULT_ID);
+  return row ?? null;
 }
 
-const RECOVERY_ID: SessionRecoveryId = "last-discarded";
-
-/** Snapshot JSON download + recovery row + cleared `default` project. */
-export async function discardActiveSessionToRecovery(
-  snapshot: AppStateRecord
-): Promise<void> {
+/** Clear the active project in this browser (template, attendees, design, fonts). */
+export async function resetDefaultProject(): Promise<void> {
   await easyCertDb.open();
-  await hydrateCachesFromDb();
-  await easyCertDb.sessionRecovery.put({
-    id: RECOVERY_ID,
-    payload: { ...snapshot },
-    discardedAt: Date.now(),
-  });
+  await ensureHydrated();
   const cleared: AppStateRecord = {
     id: DEFAULT_ID,
     customFonts: {},
@@ -200,27 +227,15 @@ export async function discardActiveSessionToRecovery(
   notifyCertificateImageCleared();
 }
 
-/** Copy current `default` project to `last-discarded` recovery (no download). */
-export async function stashCurrentProjectAsRecovery(): Promise<void> {
-  await easyCertDb.open();
-  await hydrateCachesFromDb();
-  const row = await easyCertDb.appState.get(DEFAULT_ID);
-  if (!row || !isRestorableProject(row)) return;
-  await easyCertDb.sessionRecovery.put({
-    id: RECOVERY_ID,
-    payload: { ...row },
-    discardedAt: Date.now(),
-  });
-}
-
 /** Replace IndexedDB project with validated import; sync caches and image staging events. */
 export async function applyImportedAppState(src: AppStateRecord): Promise<void> {
   await easyCertDb.open();
-  await hydrateCachesFromDb();
+  await ensureHydrated();
   const next: AppStateRecord = {
     id: DEFAULT_ID,
     certificateImageUrl: src.certificateImageUrl,
     attendeeListText: src.attendeeListText,
+    attendeeEntryTab: src.attendeeEntryTab,
     customFonts: stripInvalidBlobFonts(src.customFonts ?? {}),
     textElements: src.textElements ?? [],
     wizardStep: 0,

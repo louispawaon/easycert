@@ -1,7 +1,6 @@
 import type { AppStateRecord } from "./easycert-db";
-import { downloadEasycertFile } from "@/lib/project/easycert-file";
 
-export function isRestorableProject(row: AppStateRecord | undefined): boolean {
+export function isRestorableProject(row: AppStateRecord | undefined | null): boolean {
   if (!row) return false;
   if (row.certificateImageUrl) return true;
   if (row.textElements && row.textElements.length > 0) return true;
@@ -11,11 +10,6 @@ export function isRestorableProject(row: AppStateRecord | undefined): boolean {
     if (row.attendeeListText.trim().length > 0) return true;
   }
   return false;
-}
-
-/** Session discard / backup download uses the same `.easycert` envelope as manual export. */
-export function downloadProjectBackup(row: AppStateRecord): void {
-  downloadEasycertFile(row, "easycert-backup");
 }
 
 export function formatSavedAtLabel(savedAt: number | undefined): string | null {
