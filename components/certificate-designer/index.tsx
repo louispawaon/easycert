@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -15,6 +16,8 @@ import { CanvasPreview } from "@/components/certificate-designer/CanvasPreview";
 import { TextElementEditor } from "@/components/certificate-designer/TextElementEditor";
 import { CertificateControls } from "@/components/certificate-designer/CertificateControls";
 import { Download } from "lucide-react";
+import { shouldIgnoreDesignerKeyboardTarget } from "@/lib/designer-keyboard";
+import { AutosaveStatus } from "@/components/AutosaveStatus";
 
 export function CertificateDesigner(
   props: CertificateDesignerController & { wizardFooter?: ReactNode }
@@ -26,11 +29,11 @@ export function CertificateDesigner(
     selectedElement,
     handleElementUpdate,
     handleElementRemove,
+    handleElementSelect,
     handleAddTextElement,
     canvasPreviewProps,
     certificatePreviewProps,
     loadPreset,
-    autosaveStatus,
   } = designer;
 
   const { attendees, previewIndex, onPreviewChange, onDownload } = certificatePreviewProps;
@@ -39,6 +42,29 @@ export function CertificateDesigner(
   const hasNamePlaceholder = textElements.some((el) => el.type === "name");
   const selectedTextElement =
     selectedElement != null ? textElements.find((el) => el.id === selectedElement) : undefined;
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if (shouldIgnoreDesignerKeyboardTarget(e.target)) return;
+
+      if (e.key === "Escape") {
+        if (selectedElement == null) return;
+        e.preventDefault();
+        handleElementSelect(null);
+        return;
+      }
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedElement == null) return;
+        e.preventDefault();
+        handleElementRemove();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [selectedElement, handleElementRemove, handleElementSelect]);
 
   return (
     <Card className="mb-8">
@@ -52,9 +78,7 @@ export function CertificateDesigner(
             Click an element type, then click the canvas to place it.
             </CardDescription>
           </div>
-          {autosaveStatus ? (
-            <p className="text-xs text-muted-foreground tabular-nums pt-1">{autosaveStatus}</p>
-          ) : null}
+          <AutosaveStatus />
         </div>
       </CardHeader>
       <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">

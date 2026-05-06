@@ -1,11 +1,15 @@
+import { useMemo } from "react";
 import { FileType } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { AttendeeEntryTab } from "@/lib/db/easycert-db";
 
 interface AttendeeUploadProps {
   attendeeList: string;
+  attendeeEntryTab: AttendeeEntryTab;
+  handleAttendeeEntryTabChange: (value: string) => void;
   handleAttendeeFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleManualAttendeeChange: (value: string) => void;
   handleClearAttendees: () => void;
@@ -13,14 +17,25 @@ interface AttendeeUploadProps {
 
 export function AttendeeUpload({
   attendeeList,
+  attendeeEntryTab,
+  handleAttendeeEntryTabChange,
   handleAttendeeFileUpload,
   handleManualAttendeeChange,
   handleClearAttendees
 }: AttendeeUploadProps) {
+  const attendeeLineCount = useMemo(
+    () => attendeeList.split("\n").filter((line) => line.trim()).length,
+    [attendeeList]
+  );
+
   return (
     <div>
       <Label className="uppercase font-semibold">Attendee List</Label>
-      <Tabs defaultValue="upload" className="mt-2">
+      <Tabs
+        value={attendeeEntryTab}
+        onValueChange={handleAttendeeEntryTabChange}
+        className="mt-2"
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="upload">Upload File</TabsTrigger>
           <TabsTrigger value="manual">Paste Names</TabsTrigger>
@@ -60,7 +75,7 @@ export function AttendeeUpload({
       {attendeeList && (
         <div className="mt-2 flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            {attendeeList.split('\n').filter(line => line.trim()).length} attendees loaded
+            {attendeeLineCount} attendees loaded
           </p>
           <Button 
             variant="outline" 

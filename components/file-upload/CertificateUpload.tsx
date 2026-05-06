@@ -1,29 +1,38 @@
+"use client";
+
+import { useState } from "react";
 import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/cn";
+
 interface CertificateUploadProps {
   imagePreview: string | null;
-  handleCertificateUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onCertificateFile: (file: File) => void;
   handleClearCertificate: () => void;
   isUploading: boolean;
 }
 
 export function CertificateUpload({
   imagePreview,
-  handleCertificateUpload,
+  onCertificateFile,
   handleClearCertificate,
-  isUploading
+  isUploading,
 }: CertificateUploadProps) {
+  const [isDragging, setIsDragging] = useState(false);
+
   return (
     <div>
-      <Label htmlFor="certificate" className="uppercase font-semibold">Certificate Template</Label>
+      <Label htmlFor="certificate" className="uppercase font-semibold">
+        Certificate Template
+      </Label>
       {imagePreview ? (
-        <div className="mt-2 relative rounded-md overflow-hidden border w-full h-[92%]">
+        <div className="mt-2 relative flex min-h-[300px] items-center justify-center overflow-hidden rounded-md border w-full bg-muted/20">
           <img
             src={imagePreview}
             alt="Certificate Preview"
-            className="w-full h-auto object-contain max-h-[300px]"
+            className="max-h-[300px] w-full max-w-full object-contain object-center"
           />
           <Button
             variant="outline"
@@ -35,27 +44,33 @@ export function CertificateUpload({
           </Button>
         </div>
       ) : (
-        <div 
-          className="mt-2 flex flex-col items-center justify-center rounded-md border border-dashed p-8 w-full h-[92%]"
+        <div
+          className={cn(
+            "mt-2 flex min-h-[300px] flex-col items-center justify-center rounded-md border border-dashed p-8 w-full",
+            isDragging && "bg-primary/10"
+          )}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragging(true);
+          }}
           onDragOver={(e) => {
             e.preventDefault();
-            e.currentTarget.classList.add('bg-primary/10');
+            e.stopPropagation();
           }}
           onDragLeave={(e) => {
             e.preventDefault();
-            e.currentTarget.classList.remove('bg-primary/10');
+            e.stopPropagation();
+            const next = e.relatedTarget as Node | null;
+            if (next && e.currentTarget.contains(next)) return;
+            setIsDragging(false);
           }}
           onDrop={(e) => {
             e.preventDefault();
-            e.currentTarget.classList.remove('bg-primary/10');
-            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-              const event = {
-                target: {
-                  files: e.dataTransfer.files
-                }
-              } as React.ChangeEvent<HTMLInputElement>;
-              handleCertificateUpload(event);
-            }
+            e.stopPropagation();
+            setIsDragging(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file) onCertificateFile(file);
           }}
         >
           {isUploading ? (
@@ -64,7 +79,7 @@ export function CertificateUpload({
               <p className="text-sm text-muted-foreground">Uploading...</p>
             </div>
           ) : (
-            <label 
+            <label
               htmlFor="certificate"
               className="cursor-pointer group flex flex-col items-center"
             >
@@ -79,7 +94,10 @@ export function CertificateUpload({
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={handleCertificateUpload}
+                onChange={(ev) => {
+                  const file = ev.target.files?.[0];
+                  if (file) onCertificateFile(file);
+                }}
                 disabled={isUploading}
               />
             </label>
@@ -88,4 +106,4 @@ export function CertificateUpload({
       )}
     </div>
   );
-} 
+}

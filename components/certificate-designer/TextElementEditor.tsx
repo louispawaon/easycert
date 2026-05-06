@@ -6,14 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Trash2, Save, Bold, Italic, Underline, ChevronDown, ChevronUp } from "lucide-react";
+import { Trash2, Save, Bold, Italic, Underline, ChevronDown, ChevronUp, Upload } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { getFontOptions } from '@/lib/fonts';
 import { useFontLoader } from '@/hooks/useFontLoader';
 import { useFontUpload } from '@/hooks/useFontUpload';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/cn";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/useToast";
+import { useToast, toast as showToast } from "@/hooks/useToast";
 import { getCustomFonts } from '@/lib/fonts';
 import type { TextProperties } from "@/hooks/useCertificateDesigner";
 
@@ -22,9 +23,6 @@ interface TextElementEditorProps {
   onUpdate: (property: keyof TextElement, value: string | number) => void;
   onRemove: () => void;
 }
-
-/** One-shot guard: the blob-font warning should surface at most once per page session, regardless of editor mounts. */
-let blobFontWarningShown = false;
 
 function clampPct(value: number, min = 0, max = 1): number {
   if (Number.isNaN(value)) return min;
@@ -37,6 +35,7 @@ function pctToDisplay(value: number): string {
 
 export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEditorProps) {
   const { toast } = useToast();
+  const blobFontWarningShownRef = useRef(false);
   const [presetName, setPresetName] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const {
@@ -45,23 +44,67 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
     handleFontUpload
   } = useFontUpload();
   const [showFontUpload, setShowFontUpload] = useState(false);
+  const [fontDropActive, setFontDropActive] = useState(false);
+  const fontFileInputRef = useRef<HTMLInputElement>(null);
+
+  const fontExtensions = /\.(ttf|otf|woff2?)$/i;
+  const acceptFont = (file: File) =>
+    fontExtensions.test(file.name) ||
+    [
+      "font/ttf",
+      "font/otf",
+      "font/woff",
+      "font/woff2",
+      "application/font-woff",
+      "application/x-font-ttf",
+      "application/x-font-otf",
+    ].includes(file.type);
+
+  const pickFontFile = (file: File | undefined) => {
+    if (!file) return;
+    if (!acceptFont(file)) {
+      toast({
+        title: "Unsupported file",
+        description: "Use a .ttf, .otf, .woff, or .woff2 font file.",
+        variant: "destructive",
+      });
+      if (fontFileInputRef.current) fontFileInputRef.current.value = "";
+      return;
+    }
+    setFontFile(file);
+  };
+
+  const onFontFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    pickFontFile(e.target.files?.[0]);
+  };
+
+  const onFontDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setFontDropActive(false);
+    pickFontFile(e.dataTransfer.files?.[0]);
+  };
+
+  const onFontUploadClick = async () => {
+    await handleFontUpload();
+    if (fontFileInputRef.current) fontFileInputRef.current.value = "";
+  };
 
   useFontLoader(element.fontFamily);
 
   useEffect(() => {
-    if (blobFontWarningShown) return;
+    if (blobFontWarningShownRef.current) return;
     const customFonts = getCustomFonts();
     const hasBlobFont = Object.values(customFonts).some(
       (url) => typeof url === 'string' && url.startsWith('blob:')
     );
     if (!hasBlobFont) return;
-    blobFontWarningShown = true;
-    toast({
+    blobFontWarningShownRef.current = true;
+    showToast({
       title: "Font Update Required",
       description: "Some custom fonts need to be re-uploaded due to browser session changes. Please re-upload your custom fonts.",
       variant: "destructive",
     });
-  }, [toast]);
+  }, []);
 
   const extractTextProperties = (el: TextElement): TextProperties => ({
     fontSize: el.fontSize,
@@ -181,26 +224,65 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
             </Button>
 
             {showFontUpload && (
-              <div className="space-y-2 p-2 border rounded-md">
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Input
-                    type="file"
-                    accept=".ttf,.otf,.woff,.woff2"
-                    onChange={(e) => e.target.files && setFontFile(e.target.files[0])}
-                  />
-                  <Button
-                    onClick={handleFontUpload}
-                    disabled={!fontFile}
-                    className="w-full sm:w-auto"
+              <div className="space-y-3 rounded-md border p-3">
+                <div
+                  className={cn(
+                    "relative flex min-h-[120px] flex-col items-center justify-center rounded-md border border-dashed px-4 py-5 transition-colors",
+                    fontDropActive && "border-primary bg-primary/5"
+                  )}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setFontDropActive(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                      setFontDropActive(false);
+                    }
+                  }}
+                  onDrop={onFontDrop}
+                >
+                  <label
+                    htmlFor="custom-font-file"
+                    className="flex cursor-pointer flex-col items-center gap-2 text-center"
                   >
-                    Upload Font
-                  </Button>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 transition-colors hover:bg-primary/20">
+                      <Upload className="h-5 w-5 text-primary" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">
+                      Choose a font file or drop it here
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      TTF, OTF, WOFF, or WOFF2
+                    </span>
+                    <Input
+                      ref={fontFileInputRef}
+                      id="custom-font-file"
+                      type="file"
+                      accept=".ttf,.otf,.woff,.woff2"
+                      onChange={onFontFileChange}
+                      className="sr-only"
+                    />
+                  </label>
                 </div>
                 {fontFile && (
                   <p className="text-sm text-muted-foreground">
-                    Font name will be: {fontFile.name.replace(/\.[^/.]+$/, "")}
+                    Selected: <span className="font-medium text-foreground">{fontFile.name}</span>
+                    {" · "}
+                    registers as{" "}
+                    <span className="font-medium text-foreground">
+                      {fontFile.name.replace(/\.[^/.]+$/, "")}
+                    </span>
                   </p>
                 )}
+                <Button
+                  onClick={onFontUploadClick}
+                  disabled={!fontFile}
+                  className="w-full"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Add font to list
+                </Button>
               </div>
             )}
           </div>

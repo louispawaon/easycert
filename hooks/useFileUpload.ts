@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/useToast";
-import { easyCertDb } from "@/lib/db/easycert-db";
+import { easyCertDb, type AttendeeEntryTab } from "@/lib/db/easycert-db";
 import {
   saveCertificateImage,
   saveAttendeeListText,
+  saveAttendeeEntryTab,
 } from "@/lib/db/app-state";
 import {
   notifyCertificateImageCleared,
@@ -17,6 +18,7 @@ export function useFileUpload() {
   const { toast } = useToast();
   const row = useLiveQuery(() => easyCertDb.appState.get("default"));
   const [attendeeList, setAttendeeList] = useState("");
+  const [attendeeEntryTab, setAttendeeEntryTab] = useState<AttendeeEntryTab>("upload");
   const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const syncedAttendeesFromDb = useRef(false);
@@ -25,14 +27,21 @@ export function useFileUpload() {
     if (row === undefined || syncedAttendeesFromDb.current) return;
     syncedAttendeesFromDb.current = true;
     setAttendeeList(row.attendeeListText ?? "");
+    if (row.attendeeEntryTab === "upload" || row.attendeeEntryTab === "manual") {
+      setAttendeeEntryTab(row.attendeeEntryTab);
+    }
   }, [row]);
+
+  const handleAttendeeEntryTabChange = (value: string) => {
+    if (value !== "upload" && value !== "manual") return;
+    setAttendeeEntryTab(value);
+    void saveAttendeeEntryTab(value);
+  };
 
   const imagePreview = localImagePreview ?? row?.certificateImageUrl ?? null;
 
-  const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-
+  const processCertificateFile = useCallback(
+    (file: File) => {
       const MAX_SIZE = 5 * 1024 * 1024;
       if (file.size > MAX_SIZE) {
         toast({
@@ -62,6 +71,10 @@ export function useFileUpload() {
         setIsUploading(false);
         notifyCertificateImageUploaded(imageUrl);
         void saveCertificateImage(imageUrl);
+        toast({
+          title: "Certificate template uploaded",
+          description: "Your certificate template has been uploaded successfully.",
+        });
       };
 
       reader.onerror = () => {
@@ -74,12 +87,13 @@ export function useFileUpload() {
       };
 
       reader.readAsDataURL(file);
+    },
+    [toast]
+  );
 
-      toast({
-        title: "Certificate template uploaded",
-        description: "Your certificate template has been uploaded successfully.",
-      });
-    }
+  const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processCertificateFile(file);
   };
 
   const handleAttendeeFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,12 +155,15 @@ export function useFileUpload() {
 
   return {
     attendeeList,
+    attendeeEntryTab,
     imagePreview,
     isUploading,
+    processCertificateFile,
     handleCertificateUpload,
     handleAttendeeFileUpload,
     handleClearCertificate,
     handleClearAttendees,
     handleManualAttendeeChange,
+    handleAttendeeEntryTabChange,
   };
 }

@@ -12,6 +12,29 @@ import {
 } from "@/components/ui/select";
 import { Download, Printer } from "lucide-react";
 import { PAGE_SIZE_OPTIONS, type PageSizeId } from "@/lib/page-size";
+import type { BatchProgress as BatchProgressType } from "@/lib/batch/batch-engine";
+import type { ActiveGenerationKind } from "@/hooks/useCertificateDesigner";
+import { BatchProgress } from "@/components/certificate-designer/BatchProgress";
+
+function Spinner() {
+  return (
+    <div
+      className="mr-2 h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+      aria-hidden
+    />
+  );
+}
+
+function loadingLabel(kind: ActiveGenerationKind): string {
+  switch (kind) {
+    case "png":
+      return "Generating ZIP…";
+    case "pdf":
+      return "Generating PDF…";
+    case "print":
+      return "Preparing print…";
+  }
+}
 
 interface CertificateGeneratorProps {
   imageUrl: string | null;
@@ -19,8 +42,13 @@ interface CertificateGeneratorProps {
   textElementsCount: number;
   namePlaceholdersCount: number;
   isGenerating: boolean;
+  activeGenerationKind?: ActiveGenerationKind | null;
+  batchProgress?: BatchProgressType | null;
+  onCancel?: () => void;
   pageSize: PageSizeId;
   onPageSizeChange: (pageSize: PageSizeId) => void;
+  outputFileBaseName: string;
+  onOutputFileBaseNameChange: (value: string) => void;
   onGenerate: () => void;
   onGeneratePDF: () => void;
   onPrint: () => void;
@@ -32,13 +60,20 @@ export function CertificateGenerator({
   textElementsCount,
   namePlaceholdersCount,
   isGenerating,
+  activeGenerationKind,
+  batchProgress,
+  onCancel,
   pageSize,
   onPageSizeChange,
+  outputFileBaseName,
+  onOutputFileBaseNameChange,
   onGenerate,
   onGeneratePDF,
   onPrint,
 }: CertificateGeneratorProps) {
   const activeOption = PAGE_SIZE_OPTIONS.find((o) => o.id === pageSize);
+  const exportActionsDisabled =
+    isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0;
 
   return (
     <div className="space-y-4">
@@ -73,7 +108,8 @@ export function CertificateGenerator({
           </div>
           <Input
             id="filename"
-            defaultValue="Certificate"
+            value={outputFileBaseName}
+            onChange={(e) => onOutputFileBaseNameChange(e.target.value)}
             className="w-[200px]"
           />
         </div>
@@ -102,17 +138,21 @@ export function CertificateGenerator({
         </div>
       </div>
 
+      {batchProgress ? (
+        <BatchProgress progress={batchProgress} onCancel={onCancel} />
+      ) : null}
+
       <div className="flex flex-col sm:flex-row gap-2">
         <Button
           onClick={onGenerate}
-          disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
+          disabled={exportActionsDisabled}
           variant="outline"
           className="flex-1 font-semibold"
         >
-          {isGenerating ? (
+          {isGenerating && activeGenerationKind === "png" ? (
             <>
-              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-              Generating...
+              <Spinner />
+              {loadingLabel("png")}
             </>
           ) : (
             <>
@@ -123,20 +163,38 @@ export function CertificateGenerator({
         </Button>
         <Button
           onClick={onGeneratePDF}
-          disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
+          disabled={exportActionsDisabled}
           className="flex-1 font-semibold"
         >
-          <Download className="mr-2 h-4 w-4" />
-          Generate PDF
+          {isGenerating && activeGenerationKind === "pdf" ? (
+            <>
+              <Spinner />
+              {loadingLabel("pdf")}
+            </>
+          ) : (
+            <>
+              <Download className="mr-2 h-4 w-4" />
+              Generate PDF
+            </>
+          )}
         </Button>
         <Button
           onClick={onPrint}
-          disabled={isGenerating || !imageUrl || attendeesCount === 0 || namePlaceholdersCount === 0}
+          disabled={exportActionsDisabled}
           variant="secondary"
           className="flex-1 font-semibold"
         >
-          <Printer className="mr-2 h-4 w-4" />
-          Print Certificates
+          {isGenerating && activeGenerationKind === "print" ? (
+            <>
+              <Spinner />
+              {loadingLabel("print")}
+            </>
+          ) : (
+            <>
+              <Printer className="mr-2 h-4 w-4" />
+              Print Certificates
+            </>
+          )}
         </Button>
       </div>
     </div>

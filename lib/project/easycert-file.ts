@@ -78,6 +78,14 @@ function validateAppState(app: unknown): ParseEasycertResult {
     wizardStep = a.wizardStep;
   }
 
+  let attendeeEntryTab: AppStateRecord["attendeeEntryTab"];
+  if (a.attendeeEntryTab !== undefined && a.attendeeEntryTab !== null) {
+    if (a.attendeeEntryTab !== "upload" && a.attendeeEntryTab !== "manual") {
+      return { ok: false, error: 'Invalid project: attendeeEntryTab must be "upload" or "manual".' };
+    }
+    attendeeEntryTab = a.attendeeEntryTab;
+  }
+
   if (a.textElements !== undefined && !Array.isArray(a.textElements)) {
     return { ok: false, error: "Invalid project: textElements must be an array." };
   }
@@ -99,6 +107,7 @@ function validateAppState(app: unknown): ParseEasycertResult {
     id: "default",
     ...(certificateImageUrl !== undefined ? { certificateImageUrl } : {}),
     ...(attendeeListText !== undefined ? { attendeeListText } : {}),
+    ...(attendeeEntryTab !== undefined ? { attendeeEntryTab } : {}),
     customFonts: fonts,
     textElements,
     ...(wizardStep !== undefined ? { wizardStep } : {}),
@@ -158,6 +167,8 @@ export function downloadEasycertFile(
   app: AppStateRecord,
   downloadBaseName = "easycert-project"
 ): void {
+  if (typeof document === "undefined") return;
+
   const envelope = buildEasycertProjectFile(app);
   const blob = new Blob([serializeEasycertProjectFile(envelope)], {
     type: "application/vnd.easycert+json;charset=utf-8",
@@ -167,8 +178,10 @@ export function downloadEasycertFile(
   a.href = url;
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
   a.download = `${downloadBaseName}-${stamp}.easycert`;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export async function readFileAsUtf8(file: File): Promise<ParseEasycertResult> {

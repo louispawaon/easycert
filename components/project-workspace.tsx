@@ -30,13 +30,14 @@ import { useToast } from "@/hooks/useToast";
 import {
   applyImportedAppState,
   loadAppState,
+  resetDefaultProject,
   saveWizardStep,
-  stashCurrentProjectAsRecovery,
+  SESSION_LEGACY_FONTS_PARSE_FAILED_KEY,
 } from "@/lib/db/app-state";
 import { easyCertDb, type AppStateRecord } from "@/lib/db/easycert-db";
 import { isRestorableProject } from "@/lib/db/session-utils";
 import { readFileAsUtf8, downloadEasycertFile } from "@/lib/project/easycert-file";
-import { Download, Upload } from "lucide-react";
+import { CirclePlus, Download, Upload } from "lucide-react";
 
 export function ProjectWorkspace() {
   const designer = useCertificateDesigner();
@@ -50,9 +51,10 @@ export function ProjectWorkspace() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [overwriteOpen, setOverwriteOpen] = useState(false);
+  const [startNewOpen, setStartNewOpen] = useState(false);
   const pendingAppRef = useRef<AppStateRecord | null>(null);
 
-  const bumpMount = () => setMountKey((k) => k + 1);
+  const bumpMount = useCallback(() => setMountKey((k) => k + 1), []);
 
   const { imageUrl, attendeesCount, namePlaceholdersCount } = designer;
 
@@ -119,7 +121,7 @@ export function ProjectWorkspace() {
         });
       }
     },
-    [toast, setWizardStep]
+    [toast, setWizardStep, bumpMount]
   );
 
   const finishImportIfNeeded = useCallback(
@@ -159,17 +161,20 @@ export function ProjectWorkspace() {
     [finishImportIfNeeded, toast]
   );
 
-  const wizardStepNav = (
-    <>
-      <Button type="button" variant="outline" disabled={wizardStep === 0} onClick={handleBack}>
-        Back
-      </Button>
-      {wizardStep < 2 ? (
-        <Button type="button" disabled={!canGoNext} onClick={handleNext}>
-          Next
+  const wizardStepNav = useMemo(
+    () => (
+      <>
+        <Button type="button" variant="outline" disabled={wizardStep === 0} onClick={handleBack}>
+          Back
         </Button>
-      ) : null}
-    </>
+        {wizardStep < 2 ? (
+          <Button type="button" disabled={!canGoNext} onClick={handleNext}>
+            Next
+          </Button>
+        ) : null}
+      </>
+    ),
+    [wizardStep, canGoNext, handleBack, handleNext]
   );
 
   const confirmOverwrite = useCallback(async () => {
@@ -177,17 +182,47 @@ export function ProjectWorkspace() {
     pendingAppRef.current = null;
     setOverwriteOpen(false);
     if (!app) return;
-    try {
-      await stashCurrentProjectAsRecovery();
-    } catch (e) {
-      console.error(e);
-    }
     await runImport(app);
   }, [runImport]);
+
+  const confirmStartNew = useCallback(async () => {
+    setStartNewOpen(false);
+    try {
+      await resetDefaultProject();
+      bumpMount();
+      setWizardStep(0);
+      toast({
+        title: "New project",
+        description: "Your workspace has been cleared.",
+      });
+    } catch (e) {
+      toast({
+        title: "Could not reset",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
+  }, [bumpMount, setWizardStep, toast]);
 
   useEffect(() => {
     setHeaderActionsEl(document.getElementById("generate-header-actions"));
   }, []);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(SESSION_LEGACY_FONTS_PARSE_FAILED_KEY) === "1") {
+        sessionStorage.removeItem(SESSION_LEGACY_FONTS_PARSE_FAILED_KEY);
+        toast({
+          title: "Legacy fonts backup couldn’t be migrated",
+          description:
+            "The old browser backup for custom fonts wasn’t valid JSON. Custom fonts from that backup were skipped.",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (appRow === undefined || hasHydratedWizardStepRef.current) return;
@@ -235,6 +270,16 @@ export function ProjectWorkspace() {
                 <Download className="h-4 w-4 mr-2" />
                 Export .easycert
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => setStartNewOpen(true)}
+              >
+                <CirclePlus className="h-4 w-4 mr-2" />
+                Start new
+              </Button>
             </>,
             headerActionsEl
           )
@@ -251,7 +296,8 @@ export function ProjectWorkspace() {
           <DialogHeader>
             <DialogTitle>Replace current project?</DialogTitle>
             <DialogDescription>
-              This will replace your current project. Your previous work will be saved so you can restore it later.            </DialogDescription>
+              This replaces your current project in this browser. Export a .easycert copy first if you want to keep what you have.
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
@@ -270,12 +316,33 @@ export function ProjectWorkspace() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={startNewOpen} onOpenChange={setStartNewOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Start a new project?</DialogTitle>
+            <DialogDescription>
+              This clears your template, attendee list, and design from this browser. Use Export if you need a backup first.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setStartNewOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={() => void confirmStartNew()}>
+              Clear and start new
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div key={mountKey} className="grid gap-8">
         <div className="w-full">
           <GenerateStepWizard currentStepIndex={wizardStep} />
         </div>
 
-        {wizardStep === 0 ? <FileUpload wizardFooter={wizardStepNav} /> : null}
+        {wizardStep === 0 ? (
+          <FileUpload wizardFooter={wizardStepNav} />
+        ) : null}
 
         {wizardStep === 1 ? <CertificateDesigner {...designer} wizardFooter={wizardStepNav} /> : null}
 
@@ -294,8 +361,13 @@ export function ProjectWorkspace() {
                 textElementsCount={designer.textElementsCount}
                 namePlaceholdersCount={designer.namePlaceholdersCount}
                 isGenerating={designer.isGenerating}
+                activeGenerationKind={designer.activeGenerationKind}
+                batchProgress={designer.batchProgress}
+                onCancel={designer.cancelGeneration}
                 pageSize={designer.pageSize}
                 onPageSizeChange={designer.setPageSize}
+                outputFileBaseName={designer.outputFileBaseName}
+                onOutputFileBaseNameChange={designer.setOutputFileBaseName}
                 onGenerate={designer.generateCertificates}
                 onGeneratePDF={designer.generateCertificatesPDF}
                 onPrint={designer.printCertificates}
