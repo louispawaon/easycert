@@ -202,13 +202,12 @@ export async function generateCertificatesBatch(
 }
 
 /**
- * Render every attendee into PNG data URLs, used by the PDF and Print paths
- * which still need the strings to feed jsPDF / `<img src>` respectively.
+ * Render every attendee into PNG data URLs for PDF generation.
  *
  * Same memory and yielding rules as `generateCertificatesBatch`, except the
  * caller is on the hook for the resulting strings -- expect ~3-5MB per
- * full-resolution certificate. PDF/Print callers should either stream into
- * jsPDF page-by-page or accept the temporary peak.
+ * full-resolution certificate. PDF callers should either stream into jsPDF
+ * page-by-page or accept the temporary peak.
  */
 export async function generateCertificateImagesBatch(
   opts: BatchOptions

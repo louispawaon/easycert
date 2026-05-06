@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Printer } from "lucide-react";
+import { Download } from "lucide-react";
 import { PAGE_SIZE_OPTIONS, type PageSizeId } from "@/lib/page-size";
 import type { BatchProgress as BatchProgressType } from "@/lib/batch/batch-engine";
 import type { ActiveGenerationKind } from "@/hooks/useCertificateDesigner";
@@ -31,8 +31,6 @@ function loadingLabel(kind: ActiveGenerationKind): string {
       return "Generating ZIP…";
     case "pdf":
       return "Generating PDF…";
-    case "print":
-      return "Preparing print…";
   }
 }
 
@@ -51,7 +49,6 @@ interface CertificateGeneratorProps {
   onOutputFileBaseNameChange: (value: string) => void;
   onGenerate: () => void;
   onGeneratePDF: () => void;
-  onPrint: () => void;
 }
 
 export function CertificateGenerator({
@@ -69,7 +66,6 @@ export function CertificateGenerator({
   onOutputFileBaseNameChange,
   onGenerate,
   onGeneratePDF,
-  onPrint,
 }: CertificateGeneratorProps) {
   const activeOption = PAGE_SIZE_OPTIONS.find((o) => o.id === pageSize);
   const exportActionsDisabled =
@@ -118,9 +114,9 @@ export function CertificateGenerator({
       <div className="space-y-2 border-t pt-4">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-0.5">
-            <Label htmlFor="page-size" className="uppercase font-semibold">Page Size (PDF &amp; Print)</Label>
+            <Label htmlFor="page-size" className="uppercase font-semibold">Page Size (PDF)</Label>
             <p className="text-sm text-muted-foreground">
-              {activeOption?.description ?? "Page size for PDF and Print output."}
+              {activeOption?.description ?? "Page size for PDF output."}
             </p>
           </div>
           <Select value={pageSize} onValueChange={(v) => onPageSizeChange(v as PageSizeId)}>
@@ -175,24 +171,6 @@ export function CertificateGenerator({
             <>
               <Download className="mr-2 h-4 w-4" />
               Generate PDF
-            </>
-          )}
-        </Button>
-        <Button
-          onClick={onPrint}
-          disabled={exportActionsDisabled}
-          variant="secondary"
-          className="flex-1 font-semibold"
-        >
-          {isGenerating && activeGenerationKind === "print" ? (
-            <>
-              <Spinner />
-              {loadingLabel("print")}
-            </>
-          ) : (
-            <>
-              <Printer className="mr-2 h-4 w-4" />
-              Print Certificates
             </>
           )}
         </Button>

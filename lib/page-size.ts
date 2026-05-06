@@ -1,5 +1,5 @@
 /**
- * Page-size presets used by the PDF generator and the print HTML.
+ * Page-size presets used by the PDF generator.
  *
  * `auto` derives the page dimensions from the source certificate image so the
  * output is edge-to-edge with no letterboxing. The fixed presets force the
@@ -52,8 +52,8 @@ const FIXED_DIMENSIONS_MM: Record<Exclude<PageSizeId, "auto">, PageDimensionsMm>
 /**
  * Resolve the physical page dimensions for a given preset. For `auto`, the
  * image's natural dimensions are converted to millimetres at 96 dpi, which
- * keeps the printed certificate at the same physical size as the screen
- * preview when the user prints at 100% scale.
+ * keeps the generated PDF at the same physical size as the screen
+ * preview at 100% scale.
  */
 export function resolvePageDimensions(
   pageSize: PageSizeId,
@@ -72,31 +72,4 @@ export function resolvePageDimensions(
 /** True when the cert should be drawn edge-to-edge (no letterboxing). */
 export function isEdgeToEdge(pageSize: PageSizeId): boolean {
   return pageSize === "auto";
-}
-
-/**
- * For the print stylesheet's `@page { size: ... }`. Returns the CSS-Paged-Media
- * size descriptor to use for a given preset and image. Edge-to-edge uses the
- * computed mm dimensions; fixed presets use the named keyword + orientation
- * for broader print-driver compatibility.
- */
-export function pageSizeCssDescriptor(
-  pageSize: PageSizeId,
-  imageWidthPx: number,
-  imageHeightPx: number
-): string {
-  if (pageSize === "auto") {
-    const { widthMm, heightMm } = resolvePageDimensions(pageSize, imageWidthPx, imageHeightPx);
-    return `${widthMm.toFixed(2)}mm ${heightMm.toFixed(2)}mm`;
-  }
-  switch (pageSize) {
-    case "a4-landscape":
-      return "A4 landscape";
-    case "a4-portrait":
-      return "A4 portrait";
-    case "letter-landscape":
-      return "Letter landscape";
-    case "letter-portrait":
-      return "Letter portrait";
-  }
 }

@@ -6,7 +6,6 @@ import type { TextElement, ImageDimensions } from "@/types/types";
 import type { PageSizeId } from "@/lib/page-size";
 import { generateCertificateImage as generateCertificateImageUtil } from "@/lib/certificate-image";
 import { generatePDF } from "@/lib/pdf";
-import { buildPrintHtml } from "@/lib/print-html";
 import {
   generateCertificatesBatch,
   generateCertificateImagesBatch,
@@ -17,7 +16,7 @@ import {
 } from "@/lib/batch/batch-engine";
 
 /** Which bulk export action is running — drives per-button loading UI. */
-export type ActiveGenerationKind = "png" | "pdf" | "print";
+export type ActiveGenerationKind = "png" | "pdf";
 
 export function useDesignerGeneration(params: {
   imageUrl: string | null;
@@ -248,131 +247,6 @@ export function useDesignerGeneration(params: {
     outputFileBaseName,
   ]);
 
-  const printCertificates = useCallback(async () => {
-    if (!imageUrl || attendees.length === 0 || !textElements.some((el) => el.type === "name")) {
-      toast({
-        title: "Missing requirements",
-        description:
-          "Please ensure you have a template, attendees, and at least one name placeholder.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    setIsGenerating(true);
-    setActiveGenerationKind("print");
-    setBatchProgress({ current: 0, total: attendees.length, phase: "rendering" });
-
-    try {
-      const certificates = await generateCertificateImagesBatch({
-        imageUrl,
-        attendees,
-        textElements,
-        imageDimensions,
-        onProgress: setBatchProgress,
-        signal: controller.signal,
-      });
-
-      if (certificates.length === 0) {
-        toast({
-          title: "No certificates generated",
-          description: "Failed to generate certificates for printing.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) {
-        toast({
-          title: "Print failed",
-          description: "Please allow pop-ups to print certificates.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const htmlContent = buildPrintHtml({
-        certificates,
-        attendees,
-        pageSize,
-        imageWidthPx: imageDimensions.width,
-        imageHeightPx: imageDimensions.height,
-      });
-
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-
-      const images = printWindow.document.querySelectorAll("img");
-      let settledImages = 0;
-      let failedImageCount = 0;
-
-      const schedulePrintWhenAllSettled = () => {
-        if (settledImages !== images.length) return;
-        if (failedImageCount > 0) {
-          toast({
-            title: "Some certificate images failed to load",
-            description:
-              "The print preview may be incomplete. Check your template and try again.",
-            variant: "destructive",
-          });
-        }
-        setTimeout(() => {
-          printWindow.print();
-          printWindow.close();
-        }, 1000);
-      };
-
-      const onImageSettled = (ok: boolean) => {
-        settledImages++;
-        if (!ok) failedImageCount++;
-        schedulePrintWhenAllSettled();
-      };
-
-      images.forEach((img) => {
-        if (img.complete) {
-          onImageSettled(true);
-        } else {
-          img.onload = () => onImageSettled(true);
-          img.onerror = () => onImageSettled(false);
-        }
-      });
-
-      if (images.length === 0) {
-        setTimeout(() => {
-          printWindow.print();
-          printWindow.close();
-        }, 1000);
-      }
-
-      toast({
-        title: "Print dialog opened",
-        description: `Ready to print ${attendees.length} certificates.`,
-      });
-    } catch (error) {
-      if (error instanceof BatchAbortError) {
-        toast({
-          title: "Generation cancelled",
-          description: "The certificate batch was cancelled.",
-        });
-      } else {
-        toast({
-          title: "Print failed",
-          description:
-            error instanceof Error ? error.message : "There was an error preparing certificates for printing.",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      abortControllerRef.current = null;
-      setBatchProgress(null);
-      setActiveGenerationKind(null);
-      setIsGenerating(false);
-    }
-  }, [imageUrl, attendees, textElements, toast, setIsGenerating, pageSize, imageDimensions]);
-
   return {
     batchProgress,
     cancelGeneration,
@@ -380,7 +254,6 @@ export function useDesignerGeneration(params: {
     downloadCertificate,
     generateCertificates,
     generateCertificatesPDF,
-    printCertificates,
     activeGenerationKind,
   };
 }

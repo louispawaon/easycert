@@ -61,7 +61,6 @@ export function useCertificateDesigner() {
     downloadCertificate,
     generateCertificates,
     generateCertificatesPDF,
-    printCertificates,
     activeGenerationKind,
   } = useDesignerGeneration({
     imageUrl,
@@ -219,7 +218,6 @@ export function useCertificateDesigner() {
     downloadCertificate,
     generateCertificates,
     generateCertificatesPDF,
-    printCertificates,
     canvasPreviewProps,
     certificatePreviewProps,
     attendeesCount: attendees.length,

@@ -370,7 +370,6 @@ export function ProjectWorkspace() {
                 onOutputFileBaseNameChange={designer.setOutputFileBaseName}
                 onGenerate={designer.generateCertificates}
                 onGeneratePDF={designer.generateCertificatesPDF}
-                onPrint={designer.printCertificates}
               />
             </CardContent>
             <CardFooter className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-6">
