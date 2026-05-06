@@ -1,20 +1,22 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { FONT_CLASSES } from '@/lib/fonts';
 import { QueryProvider } from '@/components/query-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { Analytics } from "@vercel/analytics/react"
 
-export const metadata: Metadata = {
-  metadataBase: new URL('https://easycert.vercel.app/'),
+const FALLBACK_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL;
+
+const BASE_METADATA: Metadata = {
   title: {
     default: 'EasyCert',
     template: '%s | EasyCert',
   },
-  description: 'Create and distribute personalized certificates at scale.',
+  description: 'Certificate generation, made easy.',
   openGraph: {
     title: 'EasyCert',
-    description: 'Create and distribute personalized certificates at scale.',
+    description: 'Certificate generation, made easy.',
     siteName: 'EasyCert',
     images: [
       {
@@ -30,10 +32,33 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'EasyCert',
-    description: 'Create and distribute personalized certificates at scale.',
+    description: 'Certificate generation, made easy.',
     images: ['/opengraph-image.png'],
   },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const headerStore = await headers();
+  const forwardedProto = headerStore.get('x-forwarded-proto') ?? 'https';
+  const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host');
+  const origin = host ? `${forwardedProto}://${host}` : FALLBACK_SITE_URL;
+
+  if (!origin) {
+    return BASE_METADATA;
+  }
+
+  return {
+    ...BASE_METADATA,
+    metadataBase: new URL(origin),
+    alternates: {
+      canonical: origin,
+    },
+    openGraph: {
+      ...BASE_METADATA.openGraph,
+      url: origin,
+    },
+  };
+}
 
 export default function RootLayout({
   children,
