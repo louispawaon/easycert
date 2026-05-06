@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { SessionRestoreGate } from "@/components/session-restore-gate";
 import { ProjectWorkspace } from "@/components/project-workspace";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Smartphone } from "lucide-react";
@@ -44,9 +43,7 @@ export default function GeneratePage() {
       </div>
       <Header />
       <main className="container mx-auto px-4 py-6 sm:py-8">
-        <SessionRestoreGate>
-          <ProjectWorkspace />
-        </SessionRestoreGate>
+        <ProjectWorkspace />
       </main>
       <Footer />
     </div>
