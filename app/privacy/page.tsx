@@ -16,7 +16,7 @@ export default function PrivacyPolicy() {
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-6">Privacy Policy</h1>
           
           <section className="mb-8">
-            <p className="text-muted-foreground mb-4">Effective Date: March 03, 2025</p>
+            <p className="text-muted-foreground mb-4">Effective Date: May 6, 2026</p>
             <p className="text-muted-foreground">
               EasyCert (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) values your privacy and is committed to protecting your personal data. 
               This Privacy Policy explains how we collect, use, and safeguard information when you use our web-based 
@@ -33,22 +33,21 @@ export default function PrivacyPolicy() {
               <div>
                 <h3 className="font-medium mb-2">a. Personal Information:</h3>
                 <ul className="list-disc list-inside text-muted-foreground">
-                  <li>Name, email address, and other contact details when you register an account</li>
-                  <li>Billing details (if applicable) for payment processing</li>
+                  <li>EasyCert does not require you to create an account. Names, emails, or other details may appear only in content you choose to enter for certificate generation or if you contact us directly.</li>
+                  <li>If you email us for support or questions, we receive the information you include in your message.</li>
                 </ul>
               </div>
               <div>
                 <h3 className="font-medium mb-2">b. Uploaded Content:</h3>
                 <p className="text-muted-foreground">
-                  Certificate designs and attendee lists that you provide for certificate generation. 
-                  However, we do not store or retain any uploaded images or names beyond the immediate 
-                  processing required for certificate generation. Your data remains yours to keep.
+                  Certificate template images, attendee lists, layout and text placement, font selections, and wizard progress are saved on your device using your browser&apos;s IndexedDB storage so the app can autosave your work and restore it when you return.
+                  Certificate generation and downloads (such as images, PDFs, or ZIP archives) are processed in your browser; we do not upload those files or your project payloads to EasyCert-operated servers for processing.
                 </p>
               </div>
               <div>
                 <h3 className="font-medium mb-2">c. Usage Data:</h3>
                 <p className="text-muted-foreground">
-                  Log data such as IP address, browser type, device information, and usage patterns to improve our services.
+                  When you load the site, our hosting provider may log technical information typical of web traffic (for example IP address, browser type, and request metadata). We also use Vercel Analytics to collect aggregated usage information to understand how the service is used.
                 </p>
               </div>
             </div>
@@ -61,11 +60,11 @@ export default function PrivacyPolicy() {
             </p>
             <div className="space-y-4">
                 <ul className="list-disc list-inside text-muted-foreground">
-                  <li>To provide and improve our certificate generation services.</li>
-                  <li>To process transactions and provide customer support.</li>
-                  <li>To enhance security and prevent fraudulent activities.</li>
-                  <li>To analyze usage trends and improve user experience.</li>
-                  <li>To send service-related notifications and updates.</li>
+                  <li>To provide certificate generation, local autosave, and export features in your browser.</li>
+                  <li>To operate, maintain, and secure the website and hosting infrastructure.</li>
+                  <li>To analyze aggregated usage and improve the product (including through Vercel Analytics).</li>
+                  <li>To respond when you contact us by email.</li>
+                  <li>To comply with law or protect rights and safety where applicable.</li>
                 </ul>
             </div>
           </section>
@@ -73,11 +72,11 @@ export default function PrivacyPolicy() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">3. Data Sharing and Disclosure</h2>
             <p className="text-muted-foreground mb-4">
-                We do not sell or rent your personal information. However, we may share information in the following cases:
+                We do not sell or rent your personal information. EasyCert does not receive a copy of your certificate project database from the app for processing on our servers. However, we may share information in the following cases:
             </p>
             <div className="space-y-4">
                 <ul className="list-disc list-inside text-muted-foreground">
-                  <li>With service providers who assist in hosting, payment processing, and customer support.</li>
+                  <li>With infrastructure and analytics providers that help us host and operate the site (for example Vercel for hosting and Vercel Analytics), subject to their terms and privacy notices.</li>
                   <li>When required by law, such as in response to legal requests or regulatory requirements.</li>
                   <li>In case of business transfers, such as mergers, acquisitions, or asset sales.</li>
                 </ul>
@@ -87,14 +86,16 @@ export default function PrivacyPolicy() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">4. Data Security</h2>
             <p className="text-muted-foreground mb-4">
-                We do not store uploaded certificate designs or attendee lists beyond the immediate processing required for certificate generation. Other personal data is retained only as long as necessary for the purposes stated in this policy. You may request data deletion by contacting us at miggypawaon@gmail.com.
+                Because your certificate project data stays on your device, its safety depends on your browser, device security, and who has access to your computer or browser profile. We serve the app over HTTPS in normal operation.
+                No method of storage or transmission is completely secure; if someone can use your browser or device, they may be able to access locally stored project data.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">5. Data Retention</h2>
             <p className="text-muted-foreground mb-4">
-                We implement industry-standard security measures to protect your data from unauthorized access, disclosure, or alteration. However, no method of transmission over the internet is 100% secure, and we cannot guarantee absolute security.
+                Project data in IndexedDB remains on your device until you clear site data for EasyCert, remove the underlying browser storage, or uninstall or reset your browser profile.
+                Aggregated analytics and hosting logs may be retained by our providers according to their retention practices. For questions about this policy or requests related to information you sent us by email, contact us at miggypawaon@gmail.com.
             </p>
           </section>
 
@@ -105,20 +106,21 @@ export default function PrivacyPolicy() {
             </p>
             <div className="space-y-4">
                 <ul className="list-disc list-inside text-muted-foreground">
-                  <li>Accessing, correcting, or deleting your information.</li>
-                  <li>Opting out of promotional communications.</li>
-                  <li>Restricting or objecting to data processing.</li>
+                  <li>Accessing, correcting, or deleting locally stored project data by using your browser&apos;s controls to clear site data or storage for this website.</li>
+                  <li>Opting out of promotional communications (we do not operate marketing lists tied to an EasyCert account today).</li>
+                  <li>Restricting or objecting to certain processing, including consulting Vercel&apos;s documentation regarding analytics where applicable.</li>
                 </ul>
             </div>
             <p className="text-muted-foreground mt-4">
-                To exercise your rights, contact us at miggypawaon@gmail.com.
+                To exercise your rights or ask questions, contact us at miggypawaon@gmail.com.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4">7. Third-Party Links</h2>
             <p className="text-muted-foreground mb-4">
-                Our platform may contain links to third-party websites. We are not responsible for their privacy practices, and we encourage you to review their policies.
+                Our platform may contain links to third-party websites. Analytics and hosting services (such as Vercel) have their own privacy policies governing data they process on our behalf or when you visit their sites.
+                We encourage you to review those policies. We are not responsible for third-party privacy practices beyond what this policy describes.
             </p>
           </section>
 
@@ -140,4 +142,4 @@ export default function PrivacyPolicy() {
       <Footer />
     </div>
   );
-} 
+}
