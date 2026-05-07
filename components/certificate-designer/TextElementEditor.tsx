@@ -6,28 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Trash2, Save } from "lucide-react";
+import { Trash2, Save, Bold, Italic, Underline, ChevronDown, ChevronUp, Upload } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
-import { Bold, Italic, Underline } from "lucide-react";
 import { getFontOptions } from '@/lib/fonts';
 import { useFontLoader } from '@/hooks/useFontLoader';
 import { useFontUpload } from '@/hooks/useFontUpload';
-import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/cn";
+import { GenerateHelpHint } from "@/components/generate-help-hint";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/useToast";
+import { useToast, toast as showToast } from "@/hooks/useToast";
 import { getCustomFonts } from '@/lib/fonts';
-
-interface TextProperties {
-  fontSize: number;
-  fontFamily: string;
-  color: string;
-  fontWeight: 'normal' | 'bold' | 'lighter';
-  fontStyle: string;
-  textDecoration: string;
-  textAlign: string;
-  lineHeight: number;
-}
+import type { TextProperties } from "@/hooks/useCertificateDesigner";
 
 interface TextElementEditorProps {
   element: TextElement;
@@ -35,8 +25,18 @@ interface TextElementEditorProps {
   onRemove: () => void;
 }
 
+function clampPct(value: number, min = 0, max = 1): number {
+  if (Number.isNaN(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function pctToDisplay(value: number): string {
+  return (value * 100).toFixed(1);
+}
+
 export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEditorProps) {
   const { toast } = useToast();
+  const blobFontWarningShownRef = useRef(false);
   const [presetName, setPresetName] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const {
@@ -45,37 +45,81 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
     handleFontUpload
   } = useFontUpload();
   const [showFontUpload, setShowFontUpload] = useState(false);
+  const [fontDropActive, setFontDropActive] = useState(false);
+  const fontFileInputRef = useRef<HTMLInputElement>(null);
+
+  const fontExtensions = /\.(ttf|otf|woff2?)$/i;
+  const acceptFont = (file: File) =>
+    fontExtensions.test(file.name) ||
+    [
+      "font/ttf",
+      "font/otf",
+      "font/woff",
+      "font/woff2",
+      "application/font-woff",
+      "application/x-font-ttf",
+      "application/x-font-otf",
+    ].includes(file.type);
+
+  const pickFontFile = (file: File | undefined) => {
+    if (!file) return;
+    if (!acceptFont(file)) {
+      toast({
+        title: "Unsupported file",
+        description: "Use a .ttf, .otf, .woff, or .woff2 font file.",
+        variant: "destructive",
+      });
+      if (fontFileInputRef.current) fontFileInputRef.current.value = "";
+      return;
+    }
+    setFontFile(file);
+  };
+
+  const onFontFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    pickFontFile(e.target.files?.[0]);
+  };
+
+  const onFontDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setFontDropActive(false);
+    pickFontFile(e.dataTransfer.files?.[0]);
+  };
+
+  const onFontUploadClick = async () => {
+    const addedName = await handleFontUpload();
+    if (fontFileInputRef.current) fontFileInputRef.current.value = "";
+    if (addedName) {
+      onUpdate("fontFamily", addedName);
+      setShowFontUpload(false);
+    }
+  };
 
   useFontLoader(element.fontFamily);
 
-  // Check for invalid fonts and notify user
   useEffect(() => {
+    if (blobFontWarningShownRef.current) return;
     const customFonts = getCustomFonts();
-    const blobFonts = Object.entries(customFonts).filter(([, url]) => 
-      typeof url === 'string' && url.startsWith('blob:')
+    const hasBlobFont = Object.values(customFonts).some(
+      (url) => typeof url === 'string' && url.startsWith('blob:')
     );
-    
-    if (blobFonts.length > 0) {
-      toast({
-        title: "Font Update Required",
-        description: "Some custom fonts need to be re-uploaded due to browser session changes. Please re-upload your custom fonts.",
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
+    if (!hasBlobFont) return;
+    blobFontWarningShownRef.current = true;
+    showToast({
+      title: "Font Update Required",
+      description: "Some custom fonts need to be re-uploaded due to browser session changes. Please re-upload your custom fonts.",
+      variant: "destructive",
+    });
+  }, []);
 
-  const extractTextProperties = (element: TextElement): TextProperties => {
-    return {
-      fontSize: element.fontSize,
-      fontFamily: element.fontFamily,
-      color: element.color,
-      fontWeight: typeof element.fontWeight === 'number' ? 'normal' : element.fontWeight,
-      fontStyle: element.fontStyle,
-      textDecoration: element.textDecoration,
-      textAlign: element.textAlign,
-      lineHeight: element.lineHeight,
-    };
-  };
+  const extractTextProperties = (el: TextElement): TextProperties => ({
+    fontSize: el.fontSize,
+    fontFamily: el.fontFamily,
+    fontStyle: el.fontStyle,
+    color: el.color,
+    fontWeight: el.fontWeight,
+    textDecoration: el.textDecoration,
+    maxWidthPct: el.maxWidthPct,
+  });
 
   const savePreset = async () => {
     try {
@@ -112,11 +156,24 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
     }
   };
 
+  const xPctDisplay = pctToDisplay(element.x);
+  const yPctDisplay = pctToDisplay(element.y);
+  const fontOptions = getFontOptions();
+  const hasFontValue = fontOptions.some((option) => option.value === element.fontFamily);
+
   return (
-    <div className="border rounded-md p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">Element Properties</h3>
-        <div className="flex gap-2">
+    <div className="border rounded-md p-3 sm:p-4">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+        <div className="flex items-center gap-1">
+          <h3 className="text-base sm:text-lg font-semibold">Element Properties</h3>
+          <GenerateHelpHint label="Help: text styling">
+            <span>
+              Change font, size, color, and position for the selected text. These settings apply only to
+              the text box you clicked on the certificate.
+            </span>
+          </GenerateHelpHint>
+        </div>
+        <div className="flex flex-wrap gap-2">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="icon" title="Save as Preset">
@@ -133,7 +190,7 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
                   value={presetName}
                   onChange={(e) => setPresetName(e.target.value)}
                 />
-                <Button 
+                <Button
                   onClick={savePreset}
                   disabled={!presetName.trim()}
                 >
@@ -142,27 +199,33 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
               </div>
             </DialogContent>
           </Dialog>
-          <Button variant="destructive" size="icon" onClick={onRemove} title="Remove Element">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onRemove}
+            title="Remove Element"
+            className="border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
+          >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
-      
+
       {element.type === 'static' && (
         <div className="space-y-2 mb-4">
           <Label htmlFor="text-content">Text Content</Label>
           <Input
             id="text-content"
-            value={element.text}
-            onChange={(e) => onUpdate('text', e.target.value)}
+            value={element.value ?? ''}
+            onChange={(e) => onUpdate('value', e.target.value)}
           />
         </div>
       )}
-      
+
       <div className="space-y-4">
         <div className="space-y-2">
           <Label className="flex items-center gap-2">Font Settings</Label>
-          
+
           <div className="space-y-2">
             <Button
               variant="outline"
@@ -174,99 +237,153 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
             </Button>
 
             {showFontUpload && (
-              <div className="space-y-2 p-2 border rounded-md">
-                <div className="flex gap-2">
-                  <Input
-                    type="file"
-                    accept=".ttf,.otf,.woff,.woff2"
-                    onChange={(e) => e.target.files && setFontFile(e.target.files[0])}
-                  />
-                  <Button 
-                    onClick={handleFontUpload}
-                    disabled={!fontFile}
+              <div className="space-y-3 rounded-md border p-3">
+                <div
+                  className={cn(
+                    "relative flex min-h-[120px] flex-col items-center justify-center rounded-md border border-dashed px-4 py-5 transition-colors",
+                    fontDropActive && "border-primary bg-primary/5"
+                  )}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setFontDropActive(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                      setFontDropActive(false);
+                    }
+                  }}
+                  onDrop={onFontDrop}
+                >
+                  <label
+                    htmlFor="custom-font-file"
+                    className="flex cursor-pointer flex-col items-center gap-2 text-center"
                   >
-                    Upload Font
-                  </Button>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 transition-colors hover:bg-primary/20">
+                      <Upload className="h-5 w-5 text-primary" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">
+                      Choose a font file or drop it here
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      TTF, OTF, WOFF, or WOFF2
+                    </span>
+                    <Input
+                      ref={fontFileInputRef}
+                      id="custom-font-file"
+                      type="file"
+                      accept=".ttf,.otf,.woff,.woff2"
+                      onChange={onFontFileChange}
+                      className="sr-only"
+                    />
+                  </label>
                 </div>
                 {fontFile && (
                   <p className="text-sm text-muted-foreground">
-                    Font name will be: {fontFile.name.replace(/\.[^/.]+$/, "")}
+                    Selected: <span className="font-medium text-foreground">{fontFile.name}</span>
+                    {" · "}
+                    registers as{" "}
+                    <span className="font-medium text-foreground">
+                      {fontFile.name.replace(/\.[^/.]+$/, "")}
+                    </span>
                   </p>
                 )}
+                <Button
+                  onClick={onFontUploadClick}
+                  disabled={!fontFile}
+                  className="w-full"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Add & use font
+                </Button>
+                <p className="text-center text-xs text-muted-foreground">
+                  Applies to the selected text element only.
+                </p>
               </div>
             )}
           </div>
 
           <Select
-            value={element.fontFamily}
+            value={hasFontValue ? element.fontFamily : undefined}
             onValueChange={(value) => onUpdate('fontFamily', value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select font" />
             </SelectTrigger>
             <SelectContent>
-              {getFontOptions().map((option) => (
+              {fontOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          
+
           <div className="space-y-2">
             <div className="flex justify-between">
               <Label htmlFor="font-size">Font Size</Label>
               <span className="text-sm text-muted-foreground">
-                {element.fontSize}px
+                {Math.round(element.fontSize)}px
               </span>
             </div>
             <Slider
               id="font-size"
               min={10}
-              max={72}
+              max={400}
               step={1}
               value={[element.fontSize]}
               onValueChange={(value) => onUpdate('fontSize', value[0])}
             />
+            <p className="text-xs text-muted-foreground">
+              Long names auto-shrink to fit the max width below.
+            </p>
           </div>
         </div>
-        
+
         <div className="space-y-2">
           <Label>Font Style</Label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Toggle
+              variant="outline"
               pressed={element.fontWeight === 'bold'}
               onPressedChange={(pressed) => onUpdate('fontWeight', pressed ? 'bold' : 'normal')}
               aria-label="Toggle bold"
+              title="Bold"
             >
               <Bold className="h-4 w-4" />
             </Toggle>
             <Toggle
+              variant="outline"
               pressed={element.fontStyle === 'italic'}
               onPressedChange={(pressed) => onUpdate('fontStyle', pressed ? 'italic' : 'normal')}
               aria-label="Toggle italic"
+              title="Italic"
             >
               <Italic className="h-4 w-4" />
             </Toggle>
             <Toggle
+              variant="outline"
               pressed={element.textDecoration === 'underline'}
-              onPressedChange={(pressed) => onUpdate('textDecoration', pressed ? 'underline' : 'none')}
+              onPressedChange={(pressed) =>
+                onUpdate('textDecoration', pressed ? 'underline' : 'none')
+              }
               aria-label="Toggle underline"
+              title="Underline"
             >
               <Underline className="h-4 w-4" />
             </Toggle>
           </div>
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="text-color" className="flex items-center gap-2">Text Color</Label>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input
               id="text-color"
               type="color"
               value={element.color}
               onChange={(e) => onUpdate('color', e.target.value)}
-              className="w-12 h-10 p-1"
+              className="h-10 w-full sm:w-12 p-1"
             />
             <Input
               value={element.color}
@@ -275,43 +392,57 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
             />
           </div>
         </div>
-        
+
         <div className="space-y-2">
-          <Label className="flex items-center gap-2">Position</Label>
+          <Label className="flex items-center gap-2">Position (center anchor)</Label>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label htmlFor="pos-x" className="text-xs">X Position</Label>
+              <Label htmlFor="pos-x" className="text-xs">X (%)</Label>
               <Input
                 id="pos-x"
                 type="number"
-                value={element.x}
-                onChange={(e) => onUpdate('x', Number(e.target.value))}
+                min={0}
+                max={100}
+                step={0.1}
+                value={xPctDisplay}
+                onChange={(e) => onUpdate('x', clampPct(Number(e.target.value) / 100))}
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="pos-y" className="text-xs">Y Position</Label>
+              <Label htmlFor="pos-y" className="text-xs">Y (%)</Label>
               <Input
                 id="pos-y"
                 type="number"
-                value={element.y}
-                onChange={(e) => onUpdate('y', Number(e.target.value))}
+                min={0}
+                max={100}
+                step={0.1}
+                value={yPctDisplay}
+                onChange={(e) => onUpdate('y', clampPct(Number(e.target.value) / 100))}
               />
             </div>
           </div>
         </div>
-        
+
         <div className="space-y-2">
-          <Label htmlFor="line-height">Line Height</Label>
+          <div className="flex justify-between">
+            <Label htmlFor="max-width">Max Width</Label>
+            <span className="text-sm text-muted-foreground">
+              {Math.round(element.maxWidthPct * 100)}%
+            </span>
+          </div>
           <Slider
-            id="line-height"
-            min={0.8}
-            max={3}
-            step={0.1}
-            value={[element.lineHeight]}
-            onValueChange={(value) => onUpdate('lineHeight', value[0])}
+            id="max-width"
+            min={10}
+            max={100}
+            step={1}
+            value={[Math.round(element.maxWidthPct * 100)]}
+            onValueChange={(value) => onUpdate('maxWidthPct', clampPct(value[0] / 100, 0.05, 1))}
           />
+          <p className="text-xs text-muted-foreground">
+            Maximum text width as a percentage of the canvas width. Names that exceed this width are auto-shrunk.
+          </p>
         </div>
       </div>
     </div>
   );
-} 
+}

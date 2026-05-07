@@ -1,24 +1,39 @@
-import { useEffect, useState } from "react";
-import { getLocalStorageItem } from "@/lib/utils";
-import { addEventListener, removeEventListener } from "@/lib/utils";
+"use client";
 
+import { useCallback, useEffect } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { easyCertDb } from "@/lib/db/easycert-db";
+import { saveCertificateImage } from "@/lib/db/app-state";
+import {
+  notifyCertificateImageCleared,
+  notifyCertificateImageUploaded,
+  useCertificateImageBridge,
+} from "@/store/certificate-image-bridge";
+
+/**
+ * Keeps certificate template URL in sync with IndexedDB while allowing the
+ * upload panel to broadcast the data URL immediately (before the DB write
+ * completes), so the designer canvas updates in the same frame as the upload UI.
+ */
 export function useCertificateImage() {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  
+  const row = useLiveQuery(() => easyCertDb.appState.get("default"));
+  const rowUrl = row?.certificateImageUrl ?? null;
+
+  const pendingUrl = useCertificateImageBridge((s) => s.pendingCertificateImageUrl);
+
   useEffect(() => {
-    const savedImageUrl = getLocalStorageItem('certificateImageUrl');
-    if (savedImageUrl) setImageUrl(savedImageUrl);
+    useCertificateImageBridge.getState().clearPendingWhenSyncedWithRow(rowUrl);
+  }, [rowUrl, pendingUrl]);
 
-    const handleImageUpload = (event: CustomEvent) => setImageUrl(event.detail.imageUrl);
-    const handleImageClear = () => setImageUrl(null);
+  const imageUrl = pendingUrl !== undefined ? pendingUrl : rowUrl;
 
-    addEventListener('certificate-image-uploaded', handleImageUpload as EventListener);
-    addEventListener('certificate-image-cleared', handleImageClear);
-
-    return () => {
-      removeEventListener('certificate-image-uploaded', handleImageUpload as EventListener);
-      removeEventListener('certificate-image-cleared', handleImageClear);
-    };
+  const setImageUrl = useCallback((url: string | null) => {
+    if (url) {
+      notifyCertificateImageUploaded(url);
+    } else {
+      notifyCertificateImageCleared();
+    }
+    void saveCertificateImage(url);
   }, []);
 
   return { imageUrl, setImageUrl };
