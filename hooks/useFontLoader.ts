@@ -10,7 +10,7 @@ export function useFontLoader(fontFamily?: string) {
     // Only run on client side
     if (typeof window === 'undefined') return;
 
-    // Get fresh custom fonts from localStorage
+    // Custom fonts from in-memory cache (hydrated from IndexedDB on app load)
     const customFonts = getCustomFonts();
 
     // Load all custom fonts on initial mount
@@ -49,7 +49,7 @@ export function useFontLoader(fontFamily?: string) {
       }).catch((error) => {
         console.error('Failed to load font:', error);
         
-        // If it's a blob URL error, remove the invalid font from localStorage
+        // If it's a blob URL error, remove the invalid font from persistence
         if (fontUrl.startsWith('blob:')) {
           console.warn(`Removing invalid blob URL for font: ${fontFamily}`);
           removeCustomFont(fontFamily);
