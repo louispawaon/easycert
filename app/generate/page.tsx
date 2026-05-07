@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import { ProjectWorkspace } from "@/components/project-workspace";
-import { MobileGenerateRecommendationDialog } from "@/components/mobile-generate-recommendation-dialog";
-import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
+import { GeneratePageShell } from "@/components/generate-page-shell";
 export const metadata: Metadata = {
   title: "Certificate Generation",
   description: "Automate your certificate generation process with EasyCert",
@@ -30,14 +27,5 @@ export const metadata: Metadata = {
 };
 
 export default function GeneratePage() {
-  return (
-    <div className="min-h-screen bg-background">
-      <MobileGenerateRecommendationDialog />
-      <Header />
-      <main className="container mx-auto px-4 py-6 sm:py-8">
-        <ProjectWorkspace />
-      </main>
-      <Footer />
-    </div>
-  );
+  return <GeneratePageShell />;
 }

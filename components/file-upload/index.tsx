@@ -13,6 +13,7 @@ import { useFileUpload } from "@/hooks/useFileUpload";
 import { CertificateUpload } from "@/components/file-upload/CertificateUpload";
 import { AttendeeUpload } from "@/components/file-upload/AttendeeUpload";
 import { AutosaveStatus } from "@/components/AutosaveStatus";
+import { GenerateHelpHint } from "@/components/generate-help-hint";
 
 export interface FileUploadProps {
   wizardFooter?: ReactNode;
@@ -33,13 +34,21 @@ export function FileUpload({ wizardFooter }: FileUploadProps) {
   } = useFileUpload();
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader className="p-4 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="space-y-1.5">
-            <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-semibold">
-              Upload your files
-            </CardTitle>
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-xl font-semibold sm:text-2xl md:text-3xl lg:text-4xl">
+                Upload your files
+              </CardTitle>
+              <GenerateHelpHint label="Help: upload step">
+                <span>
+                  Start with your certificate picture and your list of names. Both are required before you
+                  can design or generate certificates.
+                </span>
+              </GenerateHelpHint>
+            </div>
             <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground font-light">
               Upload your certificate template and attendee list to get started.
             </CardDescription>
@@ -47,8 +56,8 @@ export function FileUpload({ wizardFooter }: FileUploadProps) {
           <AutosaveStatus />
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="grid gap-6 md:grid-cols-2">
+      <CardContent className="min-w-0">
+        <div className="grid min-w-0 gap-6 md:grid-cols-2">
           <CertificateUpload
             imagePreview={imagePreview}
             onCertificateFile={processCertificateFile}

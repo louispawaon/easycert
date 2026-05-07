@@ -18,6 +18,7 @@ import { CertificateControls } from "@/components/certificate-designer/Certifica
 import { Download } from "lucide-react";
 import { shouldIgnoreDesignerKeyboardTarget } from "@/lib/designer-keyboard";
 import { AutosaveStatus } from "@/components/AutosaveStatus";
+import { GenerateHelpHint } from "@/components/generate-help-hint";
 
 export function CertificateDesigner(
   props: CertificateDesignerController & { wizardFooter?: ReactNode }
@@ -67,13 +68,21 @@ export function CertificateDesigner(
   }, [selectedElement, handleElementRemove, handleElementSelect]);
 
   return (
-    <Card className="mb-8">
+    <Card className="mb-8 min-w-0">
       <CardHeader className="p-4 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="space-y-1.5">
-            <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-semibold">
-              Design your certificate
-            </CardTitle>
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-xl font-semibold sm:text-2xl md:text-3xl lg:text-4xl">
+                Design your certificate
+              </CardTitle>
+              <GenerateHelpHint label="Help: design step">
+                <span>
+                  Add text on top of your certificate picture, then adjust fonts and colors. You need at
+                  least one name field so each person gets their own name on their certificate.
+                </span>
+              </GenerateHelpHint>
+            </div>
             <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground font-light ">
             Click an element type, then click the canvas to place it.
             </CardDescription>
@@ -81,13 +90,29 @@ export function CertificateDesigner(
           <AutosaveStatus />
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <CardContent className="min-w-0 space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+        <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-4 min-w-0">
-            <div className="border rounded-md p-3 sm:p-4 bg-muted/20">
+            <div
+              id="easycert-onboarding-design-canvas"
+              className="border rounded-md p-3 sm:p-4 bg-muted/20"
+            >
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
                 <div className="space-y-1 min-w-0">
-                  <h3 className="text-lg font-medium">Previewing: {previewingName}</h3>
+                  <div className="flex min-w-0 flex-wrap items-center gap-1">
+                    <h3
+                      className="min-w-0 max-w-full truncate text-base font-medium sm:text-lg"
+                      title={`Previewing: ${previewingName}`}
+                    >
+                      Previewing: {previewingName}
+                    </h3>
+                    <GenerateHelpHint label="Help: certificate preview">
+                      <span>
+                        This is a live preview. Use Previous and Next to see how each name from your
+                        list looks on the certificate.
+                      </span>
+                    </GenerateHelpHint>
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     Drag elements to position them on your certificate
                   </p>
@@ -135,13 +160,15 @@ export function CertificateDesigner(
             )}
           </div>
 
-          <div className="space-y-4 min-w-0">
-            <CertificateControls
-              onAddTextElement={handleAddTextElement}
-              textElements={textElements}
-              imageUrl={imageUrl}
-              onLoadPreset={loadPreset}
-            />
+          <div id="easycert-onboarding-design-sidebar" className="space-y-4 min-w-0">
+            <div id="easycert-onboarding-design-controls">
+              <CertificateControls
+                onAddTextElement={handleAddTextElement}
+                textElements={textElements}
+                imageUrl={imageUrl}
+                onLoadPreset={loadPreset}
+              />
+            </div>
 
             {selectedTextElement ? (
               <TextElementEditor

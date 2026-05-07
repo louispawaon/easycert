@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Smartphone } from "lucide-react"
 
+import { dispatchMobileGenerateRecommendationDismissed } from "@/lib/generate-onboarding-events"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,7 +15,9 @@ import {
 } from "@/components/ui/dialog"
 
 const MOBILE_MQ = "(max-width: 767px)"
-const SESSION_KEY = "easycert-generate-mobile-recommendation-dismissed"
+export const MOBILE_GENERATE_RECOMMENDATION_SESSION_KEY =
+  "easycert-generate-mobile-recommendation-dismissed" as const
+const SESSION_KEY = MOBILE_GENERATE_RECOMMENDATION_SESSION_KEY
 
 export function MobileGenerateRecommendationDialog() {
   const [open, setOpen] = useState(false)
@@ -45,6 +48,7 @@ export function MobileGenerateRecommendationDialog() {
       } catch {
         /* ignore */
       }
+      dispatchMobileGenerateRecommendationDismissed()
     }
   }
 

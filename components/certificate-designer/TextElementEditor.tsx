@@ -13,6 +13,7 @@ import { useFontLoader } from '@/hooks/useFontLoader';
 import { useFontUpload } from '@/hooks/useFontUpload';
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
+import { GenerateHelpHint } from "@/components/generate-help-hint";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast, toast as showToast } from "@/hooks/useToast";
 import { getCustomFonts } from '@/lib/fonts';
@@ -163,7 +164,15 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
   return (
     <div className="border rounded-md p-3 sm:p-4">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-        <h3 className="text-base sm:text-lg font-semibold">Element Properties</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="text-base sm:text-lg font-semibold">Element Properties</h3>
+          <GenerateHelpHint label="Help: text styling">
+            <span>
+              Change font, size, color, and position for the selected text. These settings apply only to
+              the text box you clicked on the certificate.
+            </span>
+          </GenerateHelpHint>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>

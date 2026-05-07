@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/cn";
+import { GenerateHelpHint } from "@/components/generate-help-hint";
 
 interface CertificateUploadProps {
   imagePreview: string | null;
@@ -23,12 +24,20 @@ export function CertificateUpload({
   const [isDragging, setIsDragging] = useState(false);
 
   return (
-    <div>
-      <Label htmlFor="certificate" className="uppercase font-semibold">
-        Certificate Template
-      </Label>
+    <div id="easycert-onboarding-certificate-upload" className="min-w-0">
+      <div className="flex items-center gap-1">
+        <Label htmlFor="certificate" className="uppercase font-semibold">
+          Certificate Template
+        </Label>
+        <GenerateHelpHint label="Help: certificate template">
+          <span>
+            Use a clear image of your blank certificate (PNG or JPG). This becomes the background for
+            every person’s certificate.
+          </span>
+        </GenerateHelpHint>
+      </div>
       {imagePreview ? (
-        <div className="mt-2 relative flex min-h-[300px] items-center justify-center overflow-hidden rounded-md border w-full bg-muted/20">
+        <div className="relative mt-2 flex min-h-[300px] w-full items-center justify-center overflow-hidden rounded-md border-2 border-success bg-muted/20 shadow-[0_0_0_4px_hsl(var(--success)/0.12)] transition-[border-color,box-shadow]">
           <img
             src={imagePreview}
             alt="Certificate Preview"

@@ -37,7 +37,32 @@ import {
 import { easyCertDb, type AppStateRecord } from "@/lib/db/easycert-db";
 import { isRestorableProject } from "@/lib/db/session-utils";
 import { readFileAsUtf8, downloadEasycertFile } from "@/lib/project/easycert-file";
+import {
+  readGenerateOnboardingStatus,
+  writeGenerateOnboardingStatus,
+} from "@/lib/generate-onboarding-storage";
+import { MOBILE_GENERATE_RECOMMENDATION_DISMISSED_EVENT } from "@/lib/generate-onboarding-events";
+import { MOBILE_GENERATE_RECOMMENDATION_SESSION_KEY } from "@/components/mobile-generate-recommendation-dialog";
+import { GenerateOnboarding } from "@/components/generate-onboarding/GenerateOnboarding";
+import { GenerateHelpHint } from "@/components/generate-help-hint";
 import { CirclePlus, Download, Upload } from "lucide-react";
+
+const MOBILE_MQ = "(max-width: 767px)";
+
+function mobileRecommendationDismissed(): boolean {
+  try {
+    return sessionStorage.getItem(MOBILE_GENERATE_RECOMMENDATION_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function canAutoStartOnboarding(): boolean {
+  if (typeof window === "undefined") return false;
+  const mq = window.matchMedia(MOBILE_MQ);
+  if (mq.matches) return mobileRecommendationDismissed();
+  return true;
+}
 
 export function ProjectWorkspace() {
   const designer = useCertificateDesigner();
@@ -53,6 +78,10 @@ export function ProjectWorkspace() {
   const [overwriteOpen, setOverwriteOpen] = useState(false);
   const [startNewOpen, setStartNewOpen] = useState(false);
   const pendingAppRef = useRef<AppStateRecord | null>(null);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingRemountKey, setOnboardingRemountKey] = useState(0);
+  const pendingReopenAfterWizardRef = useRef(false);
+  const prevWizardStepForTourRef = useRef(wizardStep);
 
   const bumpMount = useCallback(() => setMountKey((k) => k + 1), []);
 
@@ -163,7 +192,10 @@ export function ProjectWorkspace() {
 
   const wizardStepNav = useMemo(
     () => (
-      <>
+      <div
+        id="easycert-onboarding-wizard-nav"
+        className="flex w-full flex-wrap items-center justify-between gap-3"
+      >
         <Button type="button" variant="outline" disabled={wizardStep === 0} onClick={handleBack}>
           Back
         </Button>
@@ -172,7 +204,7 @@ export function ProjectWorkspace() {
             Next
           </Button>
         ) : null}
-      </>
+      </div>
     ),
     [wizardStep, canGoNext, handleBack, handleNext]
   );
@@ -206,6 +238,56 @@ export function ProjectWorkspace() {
 
   useEffect(() => {
     setHeaderActionsEl(document.getElementById("generate-header-actions"));
+  }, []);
+
+  useEffect(() => {
+    const tryOpen = () => {
+      if (readGenerateOnboardingStatus()) return;
+      if (!canAutoStartOnboarding()) return;
+      setOnboardingOpen(true);
+    };
+    tryOpen();
+    window.addEventListener(MOBILE_GENERATE_RECOMMENDATION_DISMISSED_EVENT, tryOpen);
+    return () => window.removeEventListener(MOBILE_GENERATE_RECOMMENDATION_DISMISSED_EVENT, tryOpen);
+  }, []);
+
+  useEffect(() => {
+    const prev = prevWizardStepForTourRef.current;
+    prevWizardStepForTourRef.current = wizardStep;
+    if (readGenerateOnboardingStatus()) {
+      pendingReopenAfterWizardRef.current = false;
+      return;
+    }
+    if (pendingReopenAfterWizardRef.current && prev !== wizardStep) {
+      pendingReopenAfterWizardRef.current = false;
+      if (canAutoStartOnboarding()) {
+        setOnboardingRemountKey((k) => k + 1);
+        setOnboardingOpen(true);
+      }
+    }
+  }, [wizardStep]);
+
+  const onSkipTour = useCallback(() => {
+    writeGenerateOnboardingStatus("skipped");
+    pendingReopenAfterWizardRef.current = false;
+    setOnboardingOpen(false);
+  }, []);
+
+  const onFinishedLastGenerateSubstep = useCallback(() => {
+    writeGenerateOnboardingStatus("done");
+    pendingReopenAfterWizardRef.current = false;
+    setOnboardingOpen(false);
+  }, []);
+
+  const onFinishedSegmentSubstep = useCallback(() => {
+    pendingReopenAfterWizardRef.current = true;
+    setOnboardingOpen(false);
+  }, []);
+
+  const openHowThisWorks = useCallback(() => {
+    pendingReopenAfterWizardRef.current = false;
+    setOnboardingRemountKey((k) => k + 1);
+    setOnboardingOpen(true);
   }, []);
 
   useEffect(() => {
@@ -252,33 +334,53 @@ export function ProjectWorkspace() {
             <>
               <Button
                 type="button"
+                variant="link"
+                size="sm"
+                className="h-9 shrink-0 px-2 text-xs underline-offset-4 hover:underline sm:text-sm"
+                onClick={openHowThisWorks}
+                title="How this works"
+              >
+                <span className="sm:hidden">Help</span>
+                <span className="hidden sm:inline">How this works</span>
+              </Button>
+              <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                className="h-9"
+                className="h-9 shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
                 onClick={() => fileInputRef.current?.click()}
+                aria-label="Import .easycert project file"
+                title="Import .easycert project file"
               >
-                <Upload className="h-4 w-4 mr-2" />
-                Import .easycert
+                <Upload className="h-4 w-4 sm:mr-2" aria-hidden />
+                <span className="hidden sm:inline">Import .easycert</span>
+                <span className="sm:hidden">Import</span>
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9"
+                className="h-9 shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
                 onClick={() => void handleExport()}
+                aria-label="Export project as .easycert file"
+                title="Export .easycert"
               >
-                <Download className="h-4 w-4 mr-2" />
-                Export .easycert
+                <Download className="h-4 w-4 sm:mr-2" aria-hidden />
+                <span className="hidden sm:inline">Export .easycert</span>
+                <span className="sm:hidden">Export</span>
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9"
+                className="h-9 shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
                 onClick={() => setStartNewOpen(true)}
+                aria-label="Start a new project"
+                title="Start new project"
               >
-                <CirclePlus className="h-4 w-4 mr-2" />
-                Start new
+                <CirclePlus className="h-4 w-4 sm:mr-2" aria-hidden />
+                <span className="hidden sm:inline">Start new</span>
+                <span className="sm:hidden">New</span>
               </Button>
             </>,
             headerActionsEl
@@ -335,8 +437,17 @@ export function ProjectWorkspace() {
         </DialogContent>
       </Dialog>
 
-      <div key={mountKey} className="grid gap-8">
-        <div className="w-full">
+      <GenerateOnboarding
+        key={`onboarding-${onboardingRemountKey}`}
+        open={onboardingOpen}
+        wizardStep={wizardStep}
+        onSkipTour={onSkipTour}
+        onFinishedLastGenerateSubstep={onFinishedLastGenerateSubstep}
+        onFinishedSegmentSubstep={onFinishedSegmentSubstep}
+      />
+
+      <div key={`workspace-${mountKey}`} className="grid min-w-0 gap-8">
+        <div className="w-full min-w-0">
           <GenerateStepWizard currentStepIndex={wizardStep} />
         </div>
 
@@ -347,14 +458,24 @@ export function ProjectWorkspace() {
         {wizardStep === 1 ? <CertificateDesigner {...designer} wizardFooter={wizardStepNav} /> : null}
 
         {wizardStep === 2 ? (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="text-2xl sm:text-3xl lg:text-4xl font-semibold">Generate Certificates</CardTitle>
+          <Card className="mb-8 min-w-0">
+            <CardHeader className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <CardTitle className="text-xl font-semibold sm:text-2xl md:text-3xl lg:text-4xl">
+                  Generate Certificates
+                </CardTitle>
+                <GenerateHelpHint label="Help: generate step">
+                  <span>
+                    When everything is ready, download a ZIP of images or a single PDF. Large lists can
+                    take a little time—keep this tab open until the download begins.
+                  </span>
+                </GenerateHelpHint>
+              </div>
               <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground font-light">
                 Generate certificates for all attendees in your list
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-w-0">
               <CertificateGenerator
                 imageUrl={designer.imageUrl}
                 attendeesCount={designer.attendeesCount}

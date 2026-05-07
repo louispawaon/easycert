@@ -95,12 +95,12 @@ export function GenerateStepWizard({
               </div>
 
               <div
-                className="mx-auto mt-3 max-w-44 px-1 text-center sm:mt-4 sm:max-w-none"
+                className="mx-auto mt-3 max-w-44 min-w-0 px-1 text-center sm:mt-4 sm:max-w-none"
                 style={{ gridColumn: badgeCol, gridRow: 2 }}
               >
                 <p
                   className={cn(
-                    "text-lg font-bold leading-tight sm:text-xl md:text-2xl",
+                    "wrap-break-word text-base font-bold leading-tight sm:text-lg md:text-xl lg:text-2xl",
                     status === "done" && "text-success",
                     status === "current" && "text-foreground",
                     status === "next" && "text-muted-foreground"
@@ -111,7 +111,7 @@ export function GenerateStepWizard({
                 </p>
                 <p
                   className={cn(
-                    "mt-0.5 text-xs font-normal leading-snug sm:text-sm md:text-base",
+                    "mt-0.5 wrap-break-word text-xs font-normal leading-snug sm:text-sm md:text-base",
                     status === "done" && "text-success",
                     status === "current" && "text-foreground",
                     status === "next" && "text-muted-foreground"

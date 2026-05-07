@@ -216,7 +216,7 @@ export function CanvasPreview({
                   badgeBase
                 )}
               >
-                {isNameElement ? "Name" : "Static"}
+                {isNameElement ? "Name" : "Subtext"}
               </span>
             ) : null}
           </div>

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/useToast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { GenerateHelpHint } from "@/components/generate-help-hint";
 
 interface CertificateControlsProps {
   onAddTextElement: (type: 'name' | 'static') => void;
@@ -120,7 +121,15 @@ export function CertificateControls({
 
   return (
     <div className="border rounded-md p-3 sm:p-4">
-      <h3 className="mb-3 text-base sm:text-lg font-semibold">Add Elements</h3>
+      <div className="mb-3 flex items-center gap-1">
+        <h3 className="text-base sm:text-lg font-semibold">Add Elements</h3>
+        <GenerateHelpHint label="Help: add text elements">
+          <span>
+            Add a name element so each certificate can show a different person. Add subtext for shared
+            wording like a date or event title. You need a template image on the left before placing text.
+          </span>
+        </GenerateHelpHint>
+      </div>
       <div className="space-y-4">
         <div className="space-y-2">
           <Button 
