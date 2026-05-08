@@ -19,6 +19,7 @@ export const FALLBACK_REFERENCE_DIMENSIONS: ImageDimensions = { width: 800, heig
 export type LegacyTextElement = Partial<TextElement> & {
   text?: string;
   value?: string | null;
+  variableColumn?: string;
   isDragging?: boolean;
   fontStyle?: string;
   textDecoration?: string;
@@ -122,6 +123,12 @@ export function migrateTextElement(
   maxWidthPct = Math.min(1, Math.max(0.05, maxWidthPct));
   fontSize = Math.max(1, fontSize);
 
+  let variableColumn: string | undefined;
+  if (el.type === "name" && el.variableColumn !== undefined && el.variableColumn !== null) {
+    const v = typeof el.variableColumn === "string" ? el.variableColumn.trim() : "";
+    if (v.length > 0) variableColumn = v;
+  }
+
   let value: string | null;
   if (el.type === "name") {
     value = null;
@@ -136,6 +143,7 @@ export function migrateTextElement(
   const migrated: TextElement = {
     id: el.id,
     type: el.type,
+    ...(variableColumn !== undefined ? { variableColumn } : {}),
     x,
     y,
     maxWidthPct,

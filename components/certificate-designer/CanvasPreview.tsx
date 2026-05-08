@@ -9,6 +9,7 @@ import {
   drawCertificateToCanvas,
   measureElementBBoxes,
   type ElementBBox,
+  type DrawCertificateOptions,
 } from "@/lib/canvas/draw-text-element";
 import { awaitFontsReady } from "@/lib/canvas/await-fonts";
 
@@ -19,8 +20,8 @@ interface CanvasPreviewProps {
   onElementSelect: (id: string | null) => void;
   onElementMove: (id: string, x: number, y: number) => void;
   imageDimensions: { width: number; height: number };
-  /** When set, `name` elements render this attendee instead of the placeholder. */
-  previewAttendeeName?: string | null;
+  /** Resolved attendee row + fallback line used when drawing `name` elements. */
+  previewDrawContext?: DrawCertificateOptions | null;
 }
 
 const DESIGN_HEIGHT_MIN_PX = 220;
@@ -35,7 +36,7 @@ export function CanvasPreview({
   onElementSelect,
   onElementMove,
   imageDimensions,
-  previewAttendeeName = null,
+  previewDrawContext = null,
 }: CanvasPreviewProps) {
   useFontLoader();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -57,10 +58,7 @@ export function CanvasPreview({
       await awaitFontsReady(textElements);
       if (cancelled) return;
       try {
-        const drawOpts =
-          previewAttendeeName != null && previewAttendeeName !== ""
-            ? { attendeeName: previewAttendeeName }
-            : {};
+        const drawOpts: DrawCertificateOptions = previewDrawContext ?? {};
         drawCertificateToCanvas(canvas, templateImg, textElements, drawOpts);
         const ctx = canvas.getContext("2d");
         if (ctx) {
@@ -75,7 +73,7 @@ export function CanvasPreview({
     return () => {
       cancelled = true;
     };
-  }, [templateImg, textElements, previewAttendeeName]);
+  }, [templateImg, textElements, previewDrawContext]);
 
   const aspect = useMemo(() => {
     if (imageDimensions.width && imageDimensions.height) {
@@ -89,6 +87,10 @@ export function CanvasPreview({
 
   const hasTemplate = Boolean(imageUrl);
   const adaptiveHeight = `clamp(${DESIGN_HEIGHT_MIN_PX}px, ${DESIGN_HEIGHT_VIEWPORT}, ${DESIGN_HEIGHT_MAX_PX}px)`;
+  const elementById = useMemo(
+    () => new Map(textElements.map((el) => [el.id, el] as const)),
+    [textElements]
+  );
 
   const handleOverlayMouseDown = (e: React.MouseEvent<HTMLDivElement>, id: string) => {
     e.preventDefault();
@@ -178,6 +180,14 @@ export function CanvasPreview({
         const isHovered = hoveredBoxId === box.id;
         const showTypeBadge = isSelected || isHovered;
         const isNameElement = box.type === "name";
+        const sourceElement = elementById.get(box.id);
+        const variableTag = sourceElement?.type === "name" ? sourceElement.variableColumn : undefined;
+        const nameBadgeLabel = variableTag && variableTag.trim().length > 0 ? variableTag : "Name";
+        const ariaLabel = isNameElement
+          ? variableTag && variableTag.trim().length > 0
+            ? `Variable field: ${variableTag}`
+            : "Name element"
+          : "Static text element";
         const ringBase = isNameElement ? "ring-success" : "ring-info";
         const ringHover = isNameElement ? "hover:ring-success/60" : "hover:ring-info/60";
         const selectedFill = isNameElement ? "bg-success/10" : "bg-info/10";
@@ -189,7 +199,7 @@ export function CanvasPreview({
             key={box.id}
             role="button"
             tabIndex={0}
-            aria-label={isNameElement ? "Name element" : "Static text element"}
+            aria-label={ariaLabel}
             className={cn(
               "group absolute cursor-move border border-background/70",
               isSelected ? `ring-2 ${ringBase} ${selectedFill}` : `hover:ring-1 ${ringHover}`
@@ -216,7 +226,7 @@ export function CanvasPreview({
                   badgeBase
                 )}
               >
-                {isNameElement ? "Name" : "Subtext"}
+                {isNameElement ? nameBadgeLabel : "Subtext"}
               </span>
             ) : null}
           </div>

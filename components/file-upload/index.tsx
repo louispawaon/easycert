@@ -31,6 +31,11 @@ export function FileUpload({ wizardFooter }: FileUploadProps) {
     handleManualAttendeeChange,
     attendeeEntryTab,
     handleAttendeeEntryTabChange,
+    attendeeTable,
+    attendeeRowCount,
+    attendeeCsvColumnCount,
+    attendeeFilenameColumnPick,
+    persistFilenameColumn,
   } = useFileUpload();
 
   return (
@@ -44,8 +49,8 @@ export function FileUpload({ wizardFooter }: FileUploadProps) {
               </CardTitle>
               <GenerateHelpHint label="Help: upload step">
                 <span>
-                  Start with your certificate picture and your list of names. Both are required before you
-                  can design or generate certificates.
+                  Upload your certificate image and your attendee list first.
+                  You need both before you can design or generate files.
                 </span>
               </GenerateHelpHint>
             </div>
@@ -71,6 +76,11 @@ export function FileUpload({ wizardFooter }: FileUploadProps) {
             handleAttendeeFileUpload={handleAttendeeFileUpload}
             handleManualAttendeeChange={handleManualAttendeeChange}
             handleClearAttendees={handleClearAttendees}
+            attendeeTable={attendeeTable}
+            attendeeRowCountEstimate={attendeeRowCount}
+            attendeeCsvColumnCount={attendeeCsvColumnCount}
+            attendeeFilenameColumnPick={attendeeFilenameColumnPick}
+            onFilenameColumnChange={persistFilenameColumn}
           />
         </div>
       </CardContent>

@@ -15,6 +15,8 @@ import {
   type BatchProgress,
 } from "@/lib/batch/batch-engine";
 
+import type { DrawCertificateOptions } from "@/lib/canvas/draw-text-element";
+
 /** Which bulk export action is running — drives per-button loading UI. */
 export type ActiveGenerationKind = "png" | "pdf";
 
@@ -22,7 +24,7 @@ export function useDesignerGeneration(params: {
   imageUrl: string | null;
   textElements: TextElement[];
   imageDimensions: ImageDimensions;
-  attendees: string[];
+  attendeeDrawContexts: DrawCertificateOptions[];
   previewIndex: number;
   pageSize: PageSizeId;
   outputFileBaseName: string;
@@ -32,7 +34,7 @@ export function useDesignerGeneration(params: {
     imageUrl,
     textElements,
     imageDimensions,
-    attendees,
+    attendeeDrawContexts,
     previewIndex,
     pageSize,
     outputFileBaseName,
@@ -56,14 +58,14 @@ export function useDesignerGeneration(params: {
   }, []);
 
   const generateCertificateImage = useCallback(
-    async (name: string): Promise<string | null> => {
+    async (drawOpts: DrawCertificateOptions): Promise<string | null> => {
       try {
         if (!imageUrl) throw new Error("No certificate template available");
         const dataUrl = await generateCertificateImageUtil(
           imageUrl,
           textElements,
           imageDimensions,
-          name
+          drawOpts
         );
         return dataUrl;
       } catch (error) {
@@ -80,7 +82,9 @@ export function useDesignerGeneration(params: {
   );
 
   const downloadCertificate = useCallback(async () => {
-    if (!attendees[previewIndex]) {
+    const ctx = attendeeDrawContexts[previewIndex];
+    const line = (ctx?.attendeeName ?? "").trim();
+    if (!ctx || line.length === 0) {
       toast({
         title: "No attendee selected",
         description: "Please select an attendee to download the certificate.",
@@ -90,20 +94,20 @@ export function useDesignerGeneration(params: {
     }
 
     try {
-      const imageData = await generateCertificateImage(attendees[previewIndex]);
+      const imageData = await generateCertificateImage(ctx);
       if (!imageData) return;
 
       const safeBase = sanitizeOutputBasename(outputFileBaseName);
       const link = document.createElement("a");
       link.href = imageData;
-      link.download = `${safeBase}_${sanitizeAttendeeForFilename(attendees[previewIndex], previewIndex)}.png`;
+      link.download = `${safeBase}_${sanitizeAttendeeForFilename(line, previewIndex)}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
       toast({
         title: "Certificate downloaded",
-        description: `Certificate for ${attendees[previewIndex]} has been downloaded.`,
+        description: `Certificate for ${line} has been downloaded.`,
       });
     } catch (error) {
       console.error("Download error:", error);
@@ -113,10 +117,14 @@ export function useDesignerGeneration(params: {
         variant: "destructive",
       });
     }
-  }, [attendees, previewIndex, generateCertificateImage, toast, outputFileBaseName]);
+  }, [attendeeDrawContexts, previewIndex, generateCertificateImage, toast, outputFileBaseName]);
 
   const generateCertificates = useCallback(async () => {
-    if (!imageUrl || attendees.length === 0 || !textElements.some((el) => el.type === "name")) {
+    if (
+      !imageUrl ||
+      attendeeDrawContexts.length === 0 ||
+      !textElements.some((el) => el.type === "name")
+    ) {
       toast({
         title: "Missing requirements",
         description:
@@ -130,14 +138,14 @@ export function useDesignerGeneration(params: {
     abortControllerRef.current = controller;
     setIsGenerating(true);
     setActiveGenerationKind("png");
-    setBatchProgress({ current: 0, total: attendees.length, phase: "rendering" });
+    setBatchProgress({ current: 0, total: attendeeDrawContexts.length, phase: "rendering" });
 
     let blobUrl: string | null = null;
     const safeBase = sanitizeOutputBasename(outputFileBaseName);
     try {
       const content = await generateCertificatesBatch({
         imageUrl,
-        attendees,
+        attendeeDrawOptions: attendeeDrawContexts,
         textElements,
         imageDimensions,
         pngFilenamePrefix: safeBase,
@@ -155,7 +163,7 @@ export function useDesignerGeneration(params: {
 
       toast({
         title: "Certificates generated",
-        description: `Successfully generated ${attendees.length} certificates.`,
+        description: `Successfully generated ${attendeeDrawContexts.length} certificates.`,
       });
     } catch (error) {
       if (error instanceof BatchAbortError) {
@@ -181,10 +189,22 @@ export function useDesignerGeneration(params: {
       setActiveGenerationKind(null);
       setIsGenerating(false);
     }
-  }, [imageUrl, attendees, textElements, imageDimensions, toast, setIsGenerating, outputFileBaseName]);
+  }, [
+    imageUrl,
+    attendeeDrawContexts,
+    textElements,
+    imageDimensions,
+    toast,
+    setIsGenerating,
+    outputFileBaseName,
+  ]);
 
   const generateCertificatesPDF = useCallback(async () => {
-    if (!imageUrl || attendees.length === 0 || !textElements.some((el) => el.type === "name")) {
+    if (
+      !imageUrl ||
+      attendeeDrawContexts.length === 0 ||
+      !textElements.some((el) => el.type === "name")
+    ) {
       toast({
         title: "Missing requirements",
         description:
@@ -198,24 +218,28 @@ export function useDesignerGeneration(params: {
     abortControllerRef.current = controller;
     setIsGenerating(true);
     setActiveGenerationKind("pdf");
-    setBatchProgress({ current: 0, total: attendees.length, phase: "rendering" });
+    setBatchProgress({ current: 0, total: attendeeDrawContexts.length, phase: "rendering" });
 
     try {
       const certificates = await generateCertificateImagesBatch({
         imageUrl,
-        attendees,
+        attendeeDrawOptions: attendeeDrawContexts,
         textElements,
         imageDimensions,
         onProgress: setBatchProgress,
         signal: controller.signal,
       });
 
-      setBatchProgress({ current: attendees.length, total: attendees.length, phase: "zipping" });
+      setBatchProgress({
+        current: attendeeDrawContexts.length,
+        total: attendeeDrawContexts.length,
+        phase: "zipping",
+      });
       await generatePDF(certificates, `${sanitizeOutputBasename(outputFileBaseName)}.pdf`, { pageSize });
 
       toast({
         title: "PDF generated",
-        description: `Successfully generated PDF with ${attendees.length} certificates.`,
+        description: `Successfully generated PDF with ${attendeeDrawContexts.length} certificates.`,
       });
     } catch (error) {
       if (error instanceof BatchAbortError) {
@@ -238,7 +262,7 @@ export function useDesignerGeneration(params: {
     }
   }, [
     imageUrl,
-    attendees,
+    attendeeDrawContexts,
     textElements,
     imageDimensions,
     toast,

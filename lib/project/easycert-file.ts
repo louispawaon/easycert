@@ -65,9 +65,45 @@ function validateAppState(app: unknown): ParseEasycertResult {
     attendeeListText = a.attendeeListText;
   }
 
-  const fonts = validateFontMap(a.customFonts);
-  if (fonts === null) {
-    return { ok: false, error: "Invalid project: customFonts must be an object of string URLs (no blob: URLs)." };
+  let attendeeTable: AppStateRecord["attendeeTable"];
+  if (a.attendeeTable !== undefined && a.attendeeTable !== null) {
+    if (typeof a.attendeeTable !== "object" || Array.isArray(a.attendeeTable)) {
+      return { ok: false, error: "Invalid project: attendeeTable must be an object." };
+    }
+    const tbl = a.attendeeTable as Record<string, unknown>;
+    if (!Array.isArray(tbl.headers) || tbl.headers.some((h) => typeof h !== "string")) {
+      return { ok: false, error: "Invalid project: attendeeTable.headers must be an array of strings." };
+    }
+    if (!Array.isArray(tbl.rows)) {
+      return { ok: false, error: "Invalid project: attendeeTable.rows must be an array." };
+    }
+    const headerCount = tbl.headers.length;
+    if (headerCount === 0) {
+      return { ok: false, error: "Invalid project: attendeeTable.headers cannot be empty." };
+    }
+    const normRows: string[][] = [];
+    for (let r = 0; r < tbl.rows.length; r++) {
+      const cells = tbl.rows[r];
+      if (!Array.isArray(cells)) {
+        return { ok: false, error: `Invalid project: attendeeTable.rows[${r}] must be an array.` };
+      }
+      if (!cells.every((cell) => typeof cell === "string")) {
+        return { ok: false, error: `Invalid project: attendeeTable.rows[${r}] must contain only strings.` };
+      }
+      const row = [...cells.map((c) => c)].slice(0, headerCount);
+      while (row.length < headerCount) row.push("");
+      normRows.push(row);
+    }
+    attendeeTable = { headers: tbl.headers as string[], rows: normRows };
+  }
+
+  let filenameColumn: string | undefined;
+  if (a.filenameColumn !== undefined && a.filenameColumn !== null) {
+    if (typeof a.filenameColumn !== "string") {
+      return { ok: false, error: "Invalid project: filenameColumn must be a string when present." };
+    }
+    const fc = a.filenameColumn.trim();
+    filenameColumn = fc.length > 0 ? fc : undefined;
   }
 
   let wizardStep: 0 | 1 | 2 | undefined;
@@ -84,6 +120,11 @@ function validateAppState(app: unknown): ParseEasycertResult {
       return { ok: false, error: 'Invalid project: attendeeEntryTab must be "upload" or "manual".' };
     }
     attendeeEntryTab = a.attendeeEntryTab;
+  }
+
+  const fonts = validateFontMap(a.customFonts);
+  if (fonts === null) {
+    return { ok: false, error: "Invalid project: customFonts must be an object of string URLs (no blob: URLs)." };
   }
 
   if (a.textElements !== undefined && !Array.isArray(a.textElements)) {
@@ -107,6 +148,8 @@ function validateAppState(app: unknown): ParseEasycertResult {
     id: "default",
     ...(certificateImageUrl !== undefined ? { certificateImageUrl } : {}),
     ...(attendeeListText !== undefined ? { attendeeListText } : {}),
+    ...(attendeeTable !== undefined ? { attendeeTable } : {}),
+    ...(filenameColumn !== undefined ? { filenameColumn } : {}),
     ...(attendeeEntryTab !== undefined ? { attendeeEntryTab } : {}),
     customFonts: fonts,
     textElements,

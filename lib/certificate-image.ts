@@ -1,5 +1,5 @@
 import { TextElement } from "@/types/types";
-import { drawCertificateToCanvas } from "@/lib/canvas/draw-text-element";
+import { drawCertificateToCanvas, type DrawCertificateOptions } from "@/lib/canvas/draw-text-element";
 import { awaitFontsReady } from "@/lib/canvas/await-fonts";
 import {
   generateCertificatesBatch,
@@ -32,7 +32,7 @@ export async function generateCertificateImage(
   imageUrl: string,
   textElements: TextElement[],
   _imageDimensions: { width: number; height: number },
-  name: string,
+  drawOptions: DrawCertificateOptions,
   options: { skipFontWait?: boolean } = {}
 ): Promise<string | null> {
   if (!imageUrl) throw new Error("No certificate template available");
@@ -44,7 +44,7 @@ export async function generateCertificateImage(
   const img = await loadImage(imageUrl);
   const canvas = document.createElement("canvas");
   try {
-    drawCertificateToCanvas(canvas, img, textElements, { attendeeName: name });
+    drawCertificateToCanvas(canvas, img, textElements, drawOptions);
 
     const dataUrl = canvas.toDataURL("image/png", 0.92);
     if (!dataUrl) throw new Error("Failed to generate image data URL");
@@ -62,14 +62,14 @@ export async function generateCertificateImage(
  */
 export async function generateCertificates(
   imageUrl: string,
-  attendees: string[],
+  attendeeDrawOptions: DrawCertificateOptions[],
   textElements: TextElement[],
   imageDimensions: { width: number; height: number },
   options: Pick<BatchOptions, "onProgress" | "signal" | "chunkSize"> = {}
 ): Promise<Blob> {
   return generateCertificatesBatch({
     imageUrl,
-    attendees,
+    attendeeDrawOptions,
     textElements,
     imageDimensions,
     ...options,

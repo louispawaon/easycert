@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/useToast";
 import { easyCertDb, type AttendeeEntryTab } from "@/lib/db/easycert-db";
 import {
   saveCertificateImage,
   saveAttendeeListText,
+  saveAttendeeTable,
   saveAttendeeEntryTab,
+  saveFilenameColumn,
 } from "@/lib/db/app-state";
+import { defaultFilenameColumn } from "@/lib/attendees/attendee-dataset";
+import { mirrorLinesFromFirstColumn, parseAttendeeCsv } from "@/lib/csv/parse-attendee-csv";
+import type { ParseCsvResult } from "@/lib/csv/parse-attendee-csv";
 import {
   notifyCertificateImageCleared,
   notifyCertificateImageUploaded,
@@ -21,16 +26,22 @@ export function useFileUpload() {
   const [attendeeEntryTab, setAttendeeEntryTab] = useState<AttendeeEntryTab>("upload");
   const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const syncedAttendeesFromDb = useRef(false);
 
   useEffect(() => {
-    if (row === undefined || syncedAttendeesFromDb.current) return;
-    syncedAttendeesFromDb.current = true;
+    if (row === undefined) return;
+    if (row.attendeeTable) {
+      // File-backed datasets should not populate the manual textarea.
+      setAttendeeList("");
+      return;
+    }
     setAttendeeList(row.attendeeListText ?? "");
-    if (row.attendeeEntryTab === "upload" || row.attendeeEntryTab === "manual") {
+  }, [row?.attendeeListText, row?.attendeeTable]);
+
+  useEffect(() => {
+    if (row?.attendeeEntryTab === "upload" || row?.attendeeEntryTab === "manual") {
       setAttendeeEntryTab(row.attendeeEntryTab);
     }
-  }, [row]);
+  }, [row?.attendeeEntryTab]);
 
   const handleAttendeeEntryTabChange = (value: string) => {
     if (value !== "upload" && value !== "manual") return;
@@ -39,6 +50,11 @@ export function useFileUpload() {
   };
 
   const imagePreview = localImagePreview ?? row?.certificateImageUrl ?? null;
+
+  const attendeeTable = row?.attendeeTable;
+  const attendeeFilenameColumnPick = attendeeTable?.headers.length
+    ? (row?.filenameColumn ?? defaultFilenameColumn(attendeeTable.headers) ?? attendeeTable.headers[0])
+    : undefined;
 
   const processCertificateFile = useCallback(
     (file: File) => {
@@ -97,15 +113,51 @@ export function useFileUpload() {
   };
 
   const handleAttendeeFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+    if (!e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    const lower = file.name.toLowerCase();
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
+    const persistParsedTable = async (parsed: ParseCsvResult, sourceLabel: string) => {
+      if (!parsed.ok) {
+        toast({
+          title: `Could not parse ${sourceLabel}`,
+          description: parsed.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      const mirrored = mirrorLinesFromFirstColumn(parsed.table);
+      await saveAttendeeTable(parsed.table, mirrored);
+      // Keep manual tab clean; uploaded file data is represented in upload mode summary.
+      setAttendeeList("");
+      setAttendeeEntryTab("upload");
+      await saveAttendeeEntryTab("upload");
+      toast({
+        title: `Attendee ${sourceLabel} uploaded`,
+        description: `${parsed.table.rows.length} rows · ${parsed.table.headers.length} columns`,
+      });
+    };
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      void (async () => {
         try {
-          const content = event.target?.result as string;
-          let listText = content;
+          if (lower.endsWith(".xlsx") || lower.endsWith(".xlsm")) {
+            const content = event.target?.result as ArrayBuffer;
+            const { parseAttendeeXlsx } = await import("@/lib/xlsx/parse-attendee-xlsx");
+            const parsed = await parseAttendeeXlsx(content);
+            await persistParsedTable(parsed, "Excel file");
+            return;
+          }
 
+          const content = event.target?.result as string;
+          if (lower.endsWith(".csv")) {
+            const parsed = parseAttendeeCsv(content);
+            await persistParsedTable(parsed, "CSV");
+            return;
+          }
+
+          let listText = content;
           if (file.name.endsWith(".json")) {
             const jsonData = JSON.parse(content) as unknown;
             if (Array.isArray(jsonData)) {
@@ -132,9 +184,14 @@ export function useFileUpload() {
             variant: "destructive",
           });
         }
-      };
+      })();
+    };
+    if (lower.endsWith(".xlsx") || lower.endsWith(".xlsm")) {
+      reader.readAsArrayBuffer(file);
+    } else {
       reader.readAsText(file);
     }
+    e.target.value = "";
   };
 
   const handleClearCertificate = () => {
@@ -153,11 +210,20 @@ export function useFileUpload() {
     void saveAttendeeListText(value);
   };
 
+  const persistFilenameColumn = useCallback((headerKey: string) => {
+    void saveFilenameColumn(headerKey);
+  }, []);
+
   return {
     attendeeList,
     attendeeEntryTab,
     imagePreview,
     isUploading,
+    attendeeTable,
+    attendeeRowCount: attendeeTable?.rows.length ?? attendeeList.split("\n").filter((l) => l.trim()).length,
+    attendeeCsvColumnCount: attendeeTable?.headers.length ?? 0,
+    attendeeFilenameColumnPick,
+    persistFilenameColumn,
     processCertificateFile,
     handleCertificateUpload,
     handleAttendeeFileUpload,
