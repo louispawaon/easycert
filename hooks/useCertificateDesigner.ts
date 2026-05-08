@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { TextElement, createNameElement, createStaticElement } from "@/types/types";
+import type { DrawCertificateOptions } from "@/lib/canvas/draw-text-element";
 import { useAttendees } from "@/hooks/useAttendees";
 import { useCertificateImage } from "@/hooks/useCertificate";
 import { useCertificateTemplateImage } from "@/hooks/useCertificateTemplateImage";
@@ -38,7 +39,8 @@ const STYLE_KEYS: ReadonlyArray<keyof TextProperties> = [
 
 export function useCertificateDesigner() {
   const { imageUrl } = useCertificateImage();
-  const { attendees } = useAttendees();
+  const { attendees, attendeeRows, tableHeadersOrdered, linesMode } =
+    useAttendees();
   const { textElements, setTextElements } = useDesignerTextPersistence();
 
   const selectedElement = useDesignerUiStore((s) => s.selectedElement);
@@ -54,6 +56,15 @@ export function useCertificateDesigner() {
 
   const [outputFileBaseName, setOutputFileBaseName] = useState("Certificate");
 
+  const attendeeDrawContexts = useMemo((): DrawCertificateOptions[] => {
+    return attendees.map((line, i) => ({
+      attendeeName: line,
+      attendeeRow:
+        attendeeRows !== null && attendeeRows[i] !== undefined ? attendeeRows[i]! : null,
+      tableHeadersOrdered: attendeeRows !== null ? tableHeadersOrdered : [],
+    }));
+  }, [attendees, attendeeRows, tableHeadersOrdered]);
+
   const {
     batchProgress,
     cancelGeneration,
@@ -66,7 +77,7 @@ export function useCertificateDesigner() {
     imageUrl,
     textElements,
     imageDimensions,
-    attendees,
+    attendeeDrawContexts,
     previewIndex,
     pageSize,
     outputFileBaseName,
@@ -104,9 +115,21 @@ export function useCertificateDesigner() {
   }, [setTextElements]);
 
   const handleElementUpdate = useCallback(
-    (property: keyof TextElement, value: string | number) => {
+    (property: keyof TextElement, value: string | number | undefined) => {
       setTextElements((prev) =>
-        prev.map((el) => (el.id === selectedElement ? { ...el, [property]: value } : el))
+        prev.map((el) => {
+          if (el.id !== selectedElement) return el;
+          if (
+            property === "variableColumn" &&
+            (value === undefined ||
+              value === "" ||
+              (typeof value === "string" && !value.trim()))
+          ) {
+            const { variableColumn: _omit, ...rest } = el;
+            return rest as TextElement;
+          }
+          return { ...el, [property]: value } as TextElement;
+        })
       );
     },
     [selectedElement, setTextElements]
@@ -118,8 +141,15 @@ export function useCertificateDesigner() {
   }, [selectedElement, setSelectedElement, setTextElements]);
 
   const handleAddTextElement = useCallback(
-    (type: "name" | "static") => {
-      const newElement = type === "name" ? createNameElement() : createStaticElement();
+    (type: "name" | "static", variableColumnForName?: string) => {
+      const newElement =
+        type === "name"
+          ? createNameElement(
+              variableColumnForName !== undefined && variableColumnForName.trim() !== ""
+                ? variableColumnForName
+                : undefined
+            )
+          : createStaticElement();
       setTextElements((prev) => [...prev, newElement]);
       setSelectedElement(newElement.id);
       if (type === "name" && attendees.length > 0) {
@@ -148,6 +178,11 @@ export function useCertificateDesigner() {
     [selectedElement, setTextElements]
   );
 
+  const previewDrawContext: DrawCertificateOptions | null =
+    textElements.some((el) => el.type === "name") && attendeeDrawContexts.length > 0
+      ? attendeeDrawContexts[previewIndex] ?? attendeeDrawContexts[0] ?? null
+      : null;
+
   const canvasPreviewProps = useMemo(
     () => ({
       imageUrl,
@@ -156,10 +191,7 @@ export function useCertificateDesigner() {
       onElementSelect: handleElementSelect,
       onElementMove: handleElementMove,
       imageDimensions,
-      previewAttendeeName:
-        textElements.some((el) => el.type === "name") && attendees.length > 0
-          ? (attendees[previewIndex] ?? null)
-          : null,
+      previewDrawContext,
     }),
     [
       imageUrl,
@@ -168,8 +200,7 @@ export function useCertificateDesigner() {
       handleElementSelect,
       handleElementMove,
       imageDimensions,
-      attendees,
-      previewIndex,
+      previewDrawContext,
     ]
   );
 
@@ -182,6 +213,7 @@ export function useCertificateDesigner() {
       onDownload: downloadCertificate,
       onPreviewChange: setPreviewIndex,
       imageDimensions,
+      previewDrawContext,
     }),
     [
       imageUrl,
@@ -191,6 +223,7 @@ export function useCertificateDesigner() {
       downloadCertificate,
       setPreviewIndex,
       imageDimensions,
+      previewDrawContext,
     ]
   );
 
@@ -224,6 +257,8 @@ export function useCertificateDesigner() {
     textElementsCount: textElements.length,
     namePlaceholdersCount,
     loadPreset,
+    attendeesLinesMode: linesMode,
+    attendeeCsvHeaders: tableHeadersOrdered,
   };
 }
 

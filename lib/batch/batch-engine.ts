@@ -1,6 +1,9 @@
 import JSZip from "jszip";
 import type { TextElement, ImageDimensions } from "@/types/types";
-import { drawCertificateToCanvas } from "@/lib/canvas/draw-text-element";
+import {
+  drawCertificateToCanvas,
+  type DrawCertificateOptions,
+} from "@/lib/canvas/draw-text-element";
 import { awaitFontsReady } from "@/lib/canvas/await-fonts";
 import { createReusableCanvas } from "@/lib/batch/canvas-pool";
 import { yieldToMain } from "@/lib/batch/yield";
@@ -16,7 +19,8 @@ export type BatchProgress = {
 
 export type BatchOptions = {
   imageUrl: string;
-  attendees: string[];
+  /** One draw context per output certificate (CSV row + display line fallback). */
+  attendeeDrawOptions: DrawCertificateOptions[];
   textElements: TextElement[];
   imageDimensions: ImageDimensions;
   /** Prefix for each PNG inside the ZIP (`{prefix}_{sanitizedName}.png`). Omits path chars; defaults to `certificate` when unset. */
@@ -98,7 +102,7 @@ function validateBatchInputs(opts: BatchOptions): void {
   if (!opts.imageUrl) {
     throw new Error("No certificate template available");
   }
-  if (opts.attendees.length === 0) {
+  if (opts.attendeeDrawOptions.length === 0) {
     throw new Error("No attendees provided");
   }
   if (!opts.textElements.some((el) => el.type === "name")) {
@@ -122,7 +126,7 @@ export async function generateCertificatesBatch(
 ): Promise<Blob> {
   validateBatchInputs(opts);
   const chunkSize = Math.max(1, opts.chunkSize ?? DEFAULT_CHUNK_SIZE);
-  const total = opts.attendees.length;
+  const total = opts.attendeeDrawOptions.length;
   const { canvas, dispose } = createReusableCanvas();
 
   try {
@@ -139,16 +143,14 @@ export async function generateCertificatesBatch(
       current: 0,
       total,
       phase: "rendering",
-      currentName: opts.attendees[0],
+      currentName: opts.attendeeDrawOptions[0]?.attendeeName ?? undefined,
     });
 
     for (let i = 0; i < total; i++) {
       throwIfAborted(opts.signal);
 
-      const attendee = opts.attendees[i];
-      drawCertificateToCanvas(canvas, templateImg, opts.textElements, {
-        attendeeName: attendee,
-      });
+      const drawCtx = opts.attendeeDrawOptions[i];
+      drawCertificateToCanvas(canvas, templateImg, opts.textElements, drawCtx);
 
       const blob = await canvasToBlob(canvas, "image/png", 0.92);
       const arrayBuffer = await blob.arrayBuffer();
@@ -156,7 +158,8 @@ export async function generateCertificatesBatch(
         opts.pngFilenamePrefix !== undefined
           ? sanitizeOutputBasename(opts.pngFilenamePrefix, "certificate")
           : "certificate";
-      const stem = `${prefix}_${sanitizeAttendeeForFilename(attendee, i)}`;
+      const line = (drawCtx.attendeeName ?? "").trim();
+      const stem = `${prefix}_${sanitizeAttendeeForFilename(line, i)}`;
       const filename = uniqueZipPngFilename(usedZipNames, stem);
 
       zip.file(filename, arrayBuffer, {
@@ -169,7 +172,7 @@ export async function generateCertificatesBatch(
         current: i + 1,
         total,
         phase: "rendering",
-        currentName: opts.attendees[i + 1],
+        currentName: opts.attendeeDrawOptions[i + 1]?.attendeeName ?? undefined,
       });
 
       // Yield to the main thread between chunks so the browser can paint
@@ -214,7 +217,7 @@ export async function generateCertificateImagesBatch(
 ): Promise<string[]> {
   validateBatchInputs(opts);
   const chunkSize = Math.max(1, opts.chunkSize ?? DEFAULT_CHUNK_SIZE);
-  const total = opts.attendees.length;
+  const total = opts.attendeeDrawOptions.length;
   const { canvas, dispose } = createReusableCanvas();
 
   try {
@@ -230,16 +233,14 @@ export async function generateCertificateImagesBatch(
       current: 0,
       total,
       phase: "rendering",
-      currentName: opts.attendees[0],
+      currentName: opts.attendeeDrawOptions[0]?.attendeeName ?? undefined,
     });
 
     for (let i = 0; i < total; i++) {
       throwIfAborted(opts.signal);
 
-      const attendee = opts.attendees[i];
-      drawCertificateToCanvas(canvas, templateImg, opts.textElements, {
-        attendeeName: attendee,
-      });
+      const drawCtx = opts.attendeeDrawOptions[i];
+      drawCertificateToCanvas(canvas, templateImg, opts.textElements, drawCtx);
 
       const dataUrl = canvas.toDataURL("image/png", 0.92);
       if (!dataUrl) throw new Error("Failed to generate image data URL");
@@ -249,7 +250,7 @@ export async function generateCertificateImagesBatch(
         current: i + 1,
         total,
         phase: "rendering",
-        currentName: opts.attendees[i + 1],
+        currentName: opts.attendeeDrawOptions[i + 1]?.attendeeName ?? undefined,
       });
 
       if ((i + 1) % chunkSize === 0 && i + 1 < total) {

@@ -10,20 +10,56 @@ export type ResolvedText = {
   height: number;
 };
 
+export type AttendeeDrawContext = {
+  /** Whole-line fallback (paste/TEXT list) or primary display line for filenames. */
+  attendeeName?: string | null;
+  /** Tabular CSV row keyed by normalized header strings. */
+  attendeeRow?: Record<string, string> | null;
+  /** Column order from the CSV header row (matches `variableColumn` keys). */
+  tableHeadersOrdered?: string[];
+  namePlaceholder?: string;
+};
+
 /**
- * Resolve the rendered text for an element given the optional attendee name.
- * For `name` elements, falls back to the placeholder when no attendee is provided.
+ * Resolve the rendered text for an element given optional line and/or CSV row context.
  */
 export function resolveElementText(
   element: TextElement,
-  attendeeName?: string | null,
-  namePlaceholder: string = NAME_PLACEHOLDER
+  drawCtx: AttendeeDrawContext = {}
 ): string {
-  if (element.type === "name") {
-    const trimmed = attendeeName?.trim();
-    return trimmed && trimmed.length > 0 ? trimmed : namePlaceholder;
+  const namePlaceholder = drawCtx.namePlaceholder ?? NAME_PLACEHOLDER;
+
+  if (element.type === "static") return element.value ?? "";
+
+  const row = drawCtx.attendeeRow ?? null;
+  const keys = drawCtx.tableHeadersOrdered ?? [];
+  const primaryLine = (drawCtx.attendeeName ?? "").trim();
+  let raw: string | undefined;
+
+  if (element.variableColumn) {
+    const cell = row?.[element.variableColumn]?.trim();
+    raw =
+      cell && cell.length > 0
+        ? cell
+        : primaryLine.length > 0
+          ? primaryLine
+          : undefined;
+  } else if (row && keys.length > 0) {
+    const firstKey = keys[0];
+    const cell = firstKey !== undefined ? row[firstKey]?.trim() : "";
+    raw =
+      cell && cell.length > 0
+        ? cell
+        : primaryLine.length > 0
+          ? primaryLine
+          : undefined;
+  } else {
+    raw = primaryLine.length > 0 ? primaryLine : undefined;
   }
-  return element.value ?? "";
+
+  if (raw !== undefined && raw.length > 0) return raw;
+  if (element.variableColumn) return `{${element.variableColumn}}`;
+  return namePlaceholder;
 }
 
 function buildFontShorthand(
@@ -113,12 +149,7 @@ export function drawTextElement(
   ctx.restore();
 }
 
-export type DrawCertificateOptions = {
-  /** When provided, `name` elements render this attendee. Otherwise placeholder is used. */
-  attendeeName?: string | null;
-  /** Override the placeholder shown for `name` elements when no attendee is supplied. */
-  namePlaceholder?: string;
-};
+export type DrawCertificateOptions = AttendeeDrawContext;
 
 /**
  * Render a full certificate (template + every text element) into the given canvas.
@@ -142,7 +173,7 @@ export function drawCertificateToCanvas(
   ctx.drawImage(templateImg, 0, 0, w, h);
 
   for (const element of elements) {
-    const text = resolveElementText(element, options.attendeeName, options.namePlaceholder);
+    const text = resolveElementText(element, options);
     drawTextElement(ctx, text, element, w, h);
   }
 }
@@ -171,7 +202,7 @@ export function measureElementBBoxes(
 ): ElementBBox[] {
   const out: ElementBBox[] = [];
   for (const element of elements) {
-    const text = resolveElementText(element, options.attendeeName, options.namePlaceholder);
+    const text = resolveElementText(element, options);
     const m = measureTextElement(ctx, text, element, canvasWidth);
     if (!m) continue;
     const cx = element.x * canvasWidth;

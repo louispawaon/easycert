@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { useFontLoader } from "@/hooks/useFontLoader";
 import { useCertificateTemplateImage } from "@/hooks/useCertificateTemplateImage";
-import { drawCertificateToCanvas } from "@/lib/canvas/draw-text-element";
+import {
+  drawCertificateToCanvas,
+  type DrawCertificateOptions,
+} from "@/lib/canvas/draw-text-element";
 import { awaitFontsReady } from "@/lib/canvas/await-fonts";
 
 interface CertificatePreviewProps {
@@ -17,6 +20,7 @@ interface CertificatePreviewProps {
   onDownload: () => void;
   onPreviewChange: (index: number) => void;
   imageDimensions: { width: number; height: number };
+  previewDrawContext?: DrawCertificateOptions | null;
 }
 
 const PREVIEW_HEIGHT_PX = 500;
@@ -29,12 +33,11 @@ export function CertificatePreview({
   onDownload,
   onPreviewChange,
   imageDimensions,
+  previewDrawContext = null,
 }: CertificatePreviewProps) {
   useFontLoader();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { image: templateImg } = useCertificateTemplateImage(imageUrl);
-
-  const attendee = attendees[previewIndex];
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -44,9 +47,12 @@ export function CertificatePreview({
       await awaitFontsReady(textElements);
       if (cancelled) return;
       try {
-        drawCertificateToCanvas(canvas, templateImg, textElements, {
-          attendeeName: attendee ?? null,
-        });
+        drawCertificateToCanvas(
+          canvas,
+          templateImg,
+          textElements,
+          previewDrawContext ?? {}
+        );
       } catch (err) {
         console.error("Preview render failed:", err);
       }
@@ -54,7 +60,7 @@ export function CertificatePreview({
     return () => {
       cancelled = true;
     };
-  }, [templateImg, textElements, attendee]);
+  }, [templateImg, textElements, previewDrawContext]);
 
   const aspect =
     imageDimensions.width && imageDimensions.height
