@@ -3,6 +3,8 @@ export type TextElementType = 'name' | 'static';
 export type TextElement = {
   id: string;
   type: TextElementType;
+  /** When set on a `name` element, value comes from this CSV column key (tabData). */
+  variableColumn?: string;
   /** Center-anchor X as fraction of canvas width (0.0 - 1.0). */
   x: number;
   /** Center-anchor Y as fraction of canvas height (0.0 - 1.0). */
@@ -27,21 +29,24 @@ export interface ImageDimensions {
 
 export const NAME_PLACEHOLDER = 'Attendee Name';
 
-export function createNameElement(): TextElement {
-  return {
+export function createNameElement(variableColumn?: string): TextElement {
+  const el: TextElement = {
     id: crypto.randomUUID(),
-    type: 'name',
+    type: "name",
     x: 0.5,
     y: 0.5,
     maxWidthPct: 0.7,
     fontSize: 52,
-    fontFamily: 'Georgia',
-    fontStyle: 'normal',
-    fontWeight: 'normal',
-    textDecoration: 'none',
-    color: '#1a1a18',
+    fontFamily: "Georgia",
+    fontStyle: "normal",
+    fontWeight: "normal",
+    textDecoration: "none",
+    color: "#1a1a18",
     value: null,
   };
+  const col = variableColumn?.trim();
+  if (col) el.variableColumn = col;
+  return el;
 }
 
 export function createStaticElement(): TextElement {

@@ -31,8 +31,8 @@ export function CertificateUpload({
         </Label>
         <GenerateHelpHint label="Help: certificate template">
           <span>
-            Use a clear image of your blank certificate (PNG or JPG). This becomes the background for
-            every person’s certificate.
+            Upload a clear image of your blank certificate.
+            This image is the background for every certificate.
           </span>
         </GenerateHelpHint>
       </div>

@@ -7,28 +7,55 @@ import type { TextProperties } from "@/hooks/useCertificateDesigner";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/useToast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useRef, useState } from "react";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { GenerateHelpHint } from "@/components/generate-help-hint";
 
 interface CertificateControlsProps {
-  onAddTextElement: (type: 'name' | 'static') => void;
+  onInsertStatic: () => void;
+  onInsertAttendeeName: () => void;
+  onInsertFieldFromCsv: (columnKey: string) => void;
+  attendeeCsvHeaders: string[];
+  /** When true (paste / TXT / JSON / single-column CSV), hide column picker UX. */
+  attendeesLinesMode: boolean;
   textElements: TextElement[];
   onLoadPreset: (properties: Partial<TextProperties>) => void;
   imageUrl: string | null;
 }
 
-export function CertificateControls({ 
-  onAddTextElement, 
+export function CertificateControls({
+  onInsertStatic,
+  onInsertAttendeeName,
+  onInsertFieldFromCsv,
+  attendeeCsvHeaders,
+  attendeesLinesMode,
   textElements,
   onLoadPreset,
-  imageUrl 
+  imageUrl,
 }: CertificateControlsProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [presetDropActive, setPresetDropActive] = useState(false);
   const presetFileInputRef = useRef<HTMLInputElement>(null);
+
+  const csvFieldKeyStable = useMemo(
+    () => attendeeCsvHeaders[0] ?? "",
+    [attendeeCsvHeaders]
+  );
+  const [csvFieldKey, setCsvFieldKey] = useState(csvFieldKeyStable);
+
+  useEffect(() => {
+    setCsvFieldKey((cur) => (attendeeCsvHeaders.includes(cur) ? cur : csvFieldKeyStable));
+  }, [attendeeCsvHeaders, csvFieldKeyStable]);
 
   const processPresetFile = (file: File) => {
     setIsLoading(true);
@@ -125,24 +152,63 @@ export function CertificateControls({
         <h3 className="text-base sm:text-lg font-semibold">Add Elements</h3>
         <GenerateHelpHint label="Help: add text elements">
           <span>
-            Add a name element so each certificate can show a different person. Add subtext for shared
-            wording like a date or event title. You need a template image on the left before placing text.
+            {attendeesLinesMode
+              ? "Add a name field for each attendee. You can also add fixed text like event title or date."
+              : "Pick a column from your file, then place it on the certificate as live text."}{" "}
+            Upload your template image before placing text.
           </span>
         </GenerateHelpHint>
       </div>
       <div className="space-y-4">
         <div className="space-y-2">
-          <Button 
-            onClick={() => onAddTextElement('name')} 
-            className="w-full justify-start"
-            variant="outline"
-            disabled={!imageUrl}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Insert Attendee Name
-          </Button>
-          <Button 
-            onClick={() => onAddTextElement('static')} 
+          {attendeesLinesMode ? (
+            <Button
+              onClick={() => onInsertAttendeeName()}
+              className="w-full justify-start"
+              variant="outline"
+              disabled={!imageUrl}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Insert Attendee Name
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <div className="space-y-2">
+                <Label className="text-xs font-medium uppercase text-muted-foreground">
+                  Choose info to show
+                </Label>
+                <Select
+                  value={csvFieldKey || csvFieldKeyStable}
+                  onValueChange={setCsvFieldKey}
+                  disabled={attendeeCsvHeaders.length === 0}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose from your uploaded list" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {attendeeCsvHeaders.map((header) => (
+                      <SelectItem key={header} value={header}>
+                        {header}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={() => onInsertFieldFromCsv(csvFieldKey || csvFieldKeyStable)}
+                className="w-full justify-start"
+                variant="outline"
+                disabled={
+                  !imageUrl || attendeeCsvHeaders.length === 0 || !(csvFieldKey || csvFieldKeyStable)
+                }
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Insert Selected Info
+              </Button>
+            </div>
+          )}
+          <Button
+            onClick={() => onInsertStatic()}
             className="w-full justify-start"
             variant="outline"
             disabled={!imageUrl}

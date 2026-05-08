@@ -5,8 +5,16 @@ import { FileType } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { AttendeeEntryTab } from "@/lib/db/easycert-db";
+import type { AttendeeEntryTab, AttendeeTable } from "@/lib/db/easycert-db";
+import { isAttendeeLinesMode } from "@/lib/attendees/attendee-dataset";
 import { cn } from "@/lib/cn";
 import { GenerateHelpHint } from "@/components/generate-help-hint";
 
@@ -17,6 +25,12 @@ interface AttendeeUploadProps {
   handleAttendeeFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleManualAttendeeChange: (value: string) => void;
   handleClearAttendees: () => void;
+  attendeeTable?: AttendeeTable;
+  attendeeRowCountEstimate: number;
+  attendeeCsvColumnCount: number;
+  /** Effective filename column shown in picker (must match table header). */
+  attendeeFilenameColumnPick?: string;
+  onFilenameColumnChange: (columnKey: string) => void;
 }
 
 export function AttendeeUpload({
@@ -25,13 +39,32 @@ export function AttendeeUpload({
   handleAttendeeEntryTabChange,
   handleAttendeeFileUpload,
   handleManualAttendeeChange,
-  handleClearAttendees
+  handleClearAttendees,
+  attendeeTable,
+  attendeeRowCountEstimate,
+  attendeeCsvColumnCount,
+  attendeeFilenameColumnPick,
+  onFilenameColumnChange,
 }: AttendeeUploadProps) {
   const attendeeLineCount = useMemo(
     () => attendeeList.split("\n").filter((line) => line.trim()).length,
     [attendeeList]
   );
-  const hasAttendees = attendeeLineCount > 0;
+  const hasAttendees =
+    attendeeRowCountEstimate > 0 || attendeeLineCount > 0 || (attendeeTable?.rows.length ?? 0) > 0;
+
+  const showFilenamePick =
+    attendeeTable &&
+    !isAttendeeLinesMode(attendeeTable) &&
+    attendeeTable.headers.length > 1;
+
+  const filenameSelectValue = useMemo(() => {
+    if (!showFilenamePick || !attendeeTable) return "";
+    const headers = attendeeTable.headers;
+    const p = attendeeFilenameColumnPick?.trim() ?? "";
+    if (p && headers.includes(p)) return p;
+    return headers[0] ?? "";
+  }, [showFilenamePick, attendeeTable, attendeeFilenameColumnPick]);
 
   return (
     <div id="easycert-onboarding-attendee-upload" className="min-w-0">
@@ -39,8 +72,8 @@ export function AttendeeUpload({
         <Label className="uppercase font-semibold">Attendee List</Label>
         <GenerateHelpHint label="Help: attendee list">
           <span>
-            Put one full name per line, or upload a plain text file with one name per line. These names
-            match the order of your certificates when you generate them.
+            Add attendees by pasting names, or upload a TXT, CSV, JSON, or Excel file.
+            For CSV and Excel, we use row 1 as the column names and read the first sheet in Excel.
           </span>
         </GenerateHelpHint>
       </div>
@@ -53,7 +86,7 @@ export function AttendeeUpload({
           <TabsTrigger value="upload">Upload File</TabsTrigger>
           <TabsTrigger value="manual">Paste Names</TabsTrigger>
         </TabsList>
-        <TabsContent value="upload" className="p-0 mt-2">
+        <TabsContent value="upload" className="mt-2 p-0">
           <div
             className={cn(
               "flex min-h-[300px] w-full flex-col items-center justify-center rounded-md border-2 p-8 transition-[border-color,box-shadow,background-color]",
@@ -62,27 +95,30 @@ export function AttendeeUpload({
                 : "border-dashed border-border"
             )}
           >
-            <label 
+            <label
               htmlFor="attendees"
-              className="cursor-pointer group flex flex-col items-center"
+              className="group flex cursor-pointer flex-col items-center"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 transition-colors group-hover:bg-primary/20">
                 <FileType className="h-6 w-6 text-primary" />
               </div>
-              <p className="mt-2 text-sm text-muted-foreground group-hover:text-primary transition-colors">
-                Click to upload .txt or .json file
+              <p className="mt-2 text-sm text-muted-foreground transition-colors group-hover:text-primary">
+                Click to upload attendee file (.txt, .json, .csv, .xlsx)
               </p>
               <Input
                 id="attendees"
                 type="file"
-                accept=".txt,.json"
+                accept=".txt,.json,.csv,.xlsx,.xlsm,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12"
                 className="hidden"
                 onChange={handleAttendeeFileUpload}
               />
             </label>
           </div>
         </TabsContent>
-        <TabsContent value="manual" className="p-0 mt-2">
+        <TabsContent value="manual" className="mt-2 p-0">
+          <p className="mb-2 text-xs text-muted-foreground">
+            Paste mode is only for manual typing. Uploaded files are managed in the Upload File tab.
+          </p>
           <textarea
             id="manual-attendees"
             className={cn(
@@ -91,22 +127,45 @@ export function AttendeeUpload({
                 ? "border-success shadow-[0_0_0_4px_hsl(var(--success)/0.12)]"
                 : "border-input"
             )}
-            placeholder={`John Doe\nJane Smith\nAlex Johnson`}  
+            placeholder={`John Doe\nJane Smith\nAlex Johnson`}
             value={attendeeList}
             onChange={(e) => handleManualAttendeeChange(e.target.value)}
           />
         </TabsContent>
       </Tabs>
-      {attendeeList && (
-        <div className="mt-2 flex items-center justify-between">
+      {showFilenamePick && attendeeTable && filenameSelectValue ? (
+        <div className="mt-4 space-y-2 rounded-md border border-border/80 bg-muted/15 p-3">
+          <div className="flex flex-wrap items-center gap-1">
+            <Label className="text-xs font-semibold uppercase">Filename column</Label>
+            <GenerateHelpHint label="Help: filenames from CSV">
+              <span>
+                We use this column when naming your downloaded files.
+                Pick something clear like full name or ID.
+              </span>
+            </GenerateHelpHint>
+          </div>
+          <Select value={filenameSelectValue} onValueChange={onFilenameColumnChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {attendeeTable.headers.map((h) => (
+                <SelectItem key={h} value={h}>
+                  {h}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+      {(attendeeList || attendeeRowCountEstimate > 0) && (
+        <div className="mt-2 flex items-center justify-between gap-3">
           <p className={cn("text-sm", hasAttendees ? "text-success" : "text-muted-foreground")}>
-            {attendeeLineCount} attendees loaded
+            {attendeeCsvColumnCount > 1
+              ? `${attendeeRowCountEstimate} attendee${attendeeRowCountEstimate === 1 ? "" : "s"} · ${attendeeCsvColumnCount} columns`
+              : `${attendeeRowCountEstimate} attendee${attendeeRowCountEstimate === 1 ? "" : "s"} loaded`}
           </p>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleClearAttendees}
-          >
+          <Button variant="outline" size="sm" onClick={handleClearAttendees}>
             Clear
           </Button>
         </div>

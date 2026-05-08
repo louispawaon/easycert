@@ -466,8 +466,8 @@ export function ProjectWorkspace() {
                 </CardTitle>
                 <GenerateHelpHint label="Help: generate step">
                   <span>
-                    When everything is ready, download a ZIP of images or a single PDF. Large lists can
-                    take a little time—keep this tab open until the download begins.
+                    When you are ready, download a ZIP of images or one PDF.
+                    Large lists may take longer, so keep this tab open until download starts.
                   </span>
                 </GenerateHelpHint>
               </div>

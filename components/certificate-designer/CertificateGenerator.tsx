@@ -78,7 +78,7 @@ export function CertificateGenerator({
         <div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1">
           <Label className="shrink-0 uppercase font-semibold">Certificate Template</Label>
           <GenerateHelpHint label="Help: template status">
-            <span>Shows whether your certificate picture is loaded from the first step.</span>
+            <span>This shows if your certificate image is loaded.</span>
           </GenerateHelpHint>
           <span className="ml-auto min-w-0 flex-1 basis-0 text-right text-sm text-muted-foreground sm:flex-none sm:basis-auto">
             {imageUrl ? "Template uploaded" : "No template"}
@@ -87,7 +87,7 @@ export function CertificateGenerator({
         <div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1">
           <Label className="shrink-0 uppercase font-semibold">Attendee List</Label>
           <GenerateHelpHint label="Help: attendee count">
-            <span>How many names are in your list from the first step.</span>
+            <span>This is how many attendees are in your list.</span>
           </GenerateHelpHint>
           <span className="ml-auto min-w-0 flex-1 basis-0 text-right text-sm text-muted-foreground sm:flex-none sm:basis-auto">
             {attendeesCount} attendees
@@ -97,7 +97,7 @@ export function CertificateGenerator({
           <Label className="shrink-0 uppercase font-semibold">Text Elements</Label>
           <GenerateHelpHint label="Help: text elements summary">
             <span>
-              You need at least one “name” placeholder so each certificate can show a different person.
+              Add at least one name field so each certificate can show a different person.
             </span>
           </GenerateHelpHint>
           <span className="ml-auto min-w-0 max-w-full flex-1 basis-0 truncate text-right text-sm text-muted-foreground sm:max-w-none sm:flex-none sm:basis-auto">
@@ -115,8 +115,8 @@ export function CertificateGenerator({
               </Label>
               <GenerateHelpHint label="Help: output filename">
                 <span>
-                  Each downloaded file uses this name plus the person’s name (or a number), so pick
-                  something short and clear.
+                  We use this as the base file name.
+                  The attendee name or a number is added at the end.
                 </span>
               </GenerateHelpHint>
             </div>
@@ -139,7 +139,7 @@ export function CertificateGenerator({
                 Page Size (PDF)
               </Label>
               <GenerateHelpHint label="Help: PDF page size">
-                <span>Used only when you create a PDF. Choose the paper size you plan to print or share.</span>
+                <span>This only applies to PDF export. Pick the page size you want to print or share.</span>
               </GenerateHelpHint>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -170,8 +170,8 @@ export function CertificateGenerator({
           <span className="text-sm font-medium text-muted-foreground">Create files</span>
           <GenerateHelpHint label="Help: generate downloads">
             <span>
-              PNG / ZIP gives you one image file per person. PDF puts many certificates in a single
-              document. Stay on this page until the download starts.
+              PNG ZIP gives one image per attendee.
+              PDF puts everyone in one file. Keep this page open until download starts.
             </span>
           </GenerateHelpHint>
         </div>

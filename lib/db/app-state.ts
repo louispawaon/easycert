@@ -10,6 +10,8 @@ import {
   migrateTextElements,
 } from "@/lib/canvas/migrate-text-element";
 import { loadCertificateTemplateImage } from "@/lib/cert-template-image";
+import { defaultFilenameColumn } from "@/lib/attendees/attendee-dataset";
+import type { AttendeeTable } from "@/lib/db/easycert-db";
 import {
   easyCertDb,
   type AppStateRecord,
@@ -61,6 +63,8 @@ async function patchAppState(partial: Partial<Omit<AppStateRecord, "id">>): Prom
     id: DEFAULT_ID,
     certificateImageUrl: cur.certificateImageUrl,
     attendeeListText: cur.attendeeListText,
+    attendeeTable: cur.attendeeTable,
+    filenameColumn: cur.filenameColumn,
     attendeeEntryTab: cur.attendeeEntryTab,
     customFonts: cur.customFonts ?? {},
     textElements: cur.textElements ?? [],
@@ -109,6 +113,8 @@ export async function migrateFromLocalStorage(): Promise<void> {
     id: DEFAULT_ID,
     certificateImageUrl: current?.certificateImageUrl ?? img ?? undefined,
     attendeeListText: current?.attendeeListText ?? (attendees !== null ? attendees : undefined),
+    attendeeTable: current?.attendeeTable,
+    filenameColumn: current?.filenameColumn,
     attendeeEntryTab: current?.attendeeEntryTab,
     customFonts,
     textElements: current?.textElements ?? [],
@@ -184,7 +190,32 @@ export async function saveCertificateImage(url: string | null): Promise<void> {
 }
 
 export async function saveAttendeeListText(text: string): Promise<void> {
-  await patchAppState({ attendeeListText: text });
+  await patchAppState({
+    attendeeListText: text,
+    attendeeTable: undefined,
+    filenameColumn: undefined,
+  });
+}
+
+/** Multi-column CSV: persists table plus optional preview mirror text and filename column. */
+export async function saveAttendeeTable(
+  table: AttendeeTable,
+  attendeeListMirror: string,
+  filenameColumnHint?: string
+): Promise<void> {
+  const filenameColumn =
+    filenameColumnHint ??
+    defaultFilenameColumn(table.headers) ??
+    table.headers[0];
+  await patchAppState({
+    attendeeTable: table,
+    attendeeListText: attendeeListMirror,
+    filenameColumn: table.headers.length > 0 ? filenameColumn : undefined,
+  });
+}
+
+export async function saveFilenameColumn(headerKey: string | undefined): Promise<void> {
+  await patchAppState({ filenameColumn: headerKey });
 }
 
 export async function saveAttendeeEntryTab(tab: AttendeeEntryTab): Promise<void> {
@@ -235,6 +266,8 @@ export async function applyImportedAppState(src: AppStateRecord): Promise<void> 
     id: DEFAULT_ID,
     certificateImageUrl: src.certificateImageUrl,
     attendeeListText: src.attendeeListText,
+    attendeeTable: src.attendeeTable,
+    filenameColumn: src.filenameColumn,
     attendeeEntryTab: src.attendeeEntryTab,
     customFonts: stripInvalidBlobFonts(src.customFonts ?? {}),
     textElements: src.textElements ?? [],

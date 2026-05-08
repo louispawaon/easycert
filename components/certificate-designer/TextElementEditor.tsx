@@ -21,9 +21,13 @@ import type { TextProperties } from "@/hooks/useCertificateDesigner";
 
 interface TextElementEditorProps {
   element: TextElement;
-  onUpdate: (property: keyof TextElement, value: string | number) => void;
+  onUpdate: (property: keyof TextElement, value: string | number | undefined) => void;
   onRemove: () => void;
+  attendeeCsvHeaders: string[];
+  attendeesLinesMode: boolean;
 }
+
+const BIND_FIRST_COLUMN = "__easycert_first_column__";
 
 function clampPct(value: number, min = 0, max = 1): number {
   if (Number.isNaN(value)) return min;
@@ -34,7 +38,13 @@ function pctToDisplay(value: number): string {
   return (value * 100).toFixed(1);
 }
 
-export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEditorProps) {
+export function TextElementEditor({
+  element,
+  onUpdate,
+  onRemove,
+  attendeeCsvHeaders,
+  attendeesLinesMode,
+}: TextElementEditorProps) {
   const { toast } = useToast();
   const blobFontWarningShownRef = useRef(false);
   const [presetName, setPresetName] = useState('');
@@ -168,8 +178,8 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
           <h3 className="text-base sm:text-lg font-semibold">Element Properties</h3>
           <GenerateHelpHint label="Help: text styling">
             <span>
-              Change font, size, color, and position for the selected text. These settings apply only to
-              the text box you clicked on the certificate.
+              Edit font, size, color, and position for the selected text.
+              These settings only affect the text box you clicked.
             </span>
           </GenerateHelpHint>
         </div>
@@ -221,6 +231,37 @@ export function TextElementEditor({ element, onUpdate, onRemove }: TextElementEd
           />
         </div>
       )}
+
+      {element.type === "name" &&
+        !attendeesLinesMode &&
+        attendeeCsvHeaders.length > 1 && (
+          <div className="mb-4 space-y-2">
+            <Label htmlFor="csv-column-bind">CSV column</Label>
+            <Select
+              value={element.variableColumn ?? BIND_FIRST_COLUMN}
+              onValueChange={(value) =>
+                onUpdate(
+                  "variableColumn",
+                  value === BIND_FIRST_COLUMN ? undefined : value
+                )
+              }
+            >
+              <SelectTrigger id="csv-column-bind">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={BIND_FIRST_COLUMN}>
+                  First column (default)
+                </SelectItem>
+                {attendeeCsvHeaders.map((h) => (
+                  <SelectItem key={h} value={h}>
+                    {h}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
       <div className="space-y-4">
         <div className="space-y-2">
