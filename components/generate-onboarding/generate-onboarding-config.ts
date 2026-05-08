@@ -22,9 +22,9 @@ export const GENERATE_ONBOARDING_SUBSTEPS: OnboardingSubstep[] = [
     id: "upload-attendees",
     wizardStep: 0,
     targetElementId: "easycert-onboarding-attendee-upload",
-    title: "Add the list of names",
+    title: "Add names or CSV data",
     description:
-      "Type or paste one name per line, or upload a simple text file. These names are who will receive a certificate.",
+      "Paste one name per line, upload a TXT or JSON list, or upload a CSV with a header row. With multiple columns you can choose which fields appear on certificates in the design step.",
   },
   {
     id: "upload-next",
@@ -48,7 +48,7 @@ export const GENERATE_ONBOARDING_SUBSTEPS: OnboardingSubstep[] = [
     targetElementId: "easycert-onboarding-design-controls",
     title: "Choose what to add",
     description:
-      "Add a “name” field so each person’s certificate shows their own name. You can add extra text for dates, titles, or other wording.",
+      "Pick “Insert Field from CSV” to choose which column you place next, or Insert Attendee Name when you’re only using simple lines or a single CSV column.",
   },
   {
     id: "design-sidebar",

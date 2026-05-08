@@ -35,6 +35,8 @@ export function CertificateDesigner(
     canvasPreviewProps,
     certificatePreviewProps,
     loadPreset,
+    attendeesLinesMode,
+    attendeeCsvHeaders,
   } = designer;
 
   const { attendees, previewIndex, onPreviewChange, onDownload } = certificatePreviewProps;
@@ -78,8 +80,8 @@ export function CertificateDesigner(
               </CardTitle>
               <GenerateHelpHint label="Help: design step">
                 <span>
-                  Add text on top of your certificate picture, then adjust fonts and colors. You need at
-                  least one name field so each person gets their own name on their certificate.
+                  Add text on your certificate and style it how you want.
+                  Add at least one name field so each person gets their own version.
                 </span>
               </GenerateHelpHint>
             </div>
@@ -108,8 +110,8 @@ export function CertificateDesigner(
                     </h3>
                     <GenerateHelpHint label="Help: certificate preview">
                       <span>
-                        This is a live preview. Use Previous and Next to see how each name from your
-                        list looks on the certificate.
+                        This preview updates as you edit.
+                        Use Previous and Next to check different attendees.
                       </span>
                     </GenerateHelpHint>
                   </div>
@@ -163,7 +165,11 @@ export function CertificateDesigner(
           <div id="easycert-onboarding-design-sidebar" className="space-y-4 min-w-0">
             <div id="easycert-onboarding-design-controls">
               <CertificateControls
-                onAddTextElement={handleAddTextElement}
+                onInsertStatic={() => handleAddTextElement("static")}
+                onInsertAttendeeName={() => handleAddTextElement("name")}
+                onInsertFieldFromCsv={(columnKey) => handleAddTextElement("name", columnKey)}
+                attendeeCsvHeaders={attendeeCsvHeaders}
+                attendeesLinesMode={attendeesLinesMode}
                 textElements={textElements}
                 imageUrl={imageUrl}
                 onLoadPreset={loadPreset}
@@ -175,6 +181,8 @@ export function CertificateDesigner(
                 element={selectedTextElement}
                 onUpdate={handleElementUpdate}
                 onRemove={handleElementRemove}
+                attendeeCsvHeaders={attendeeCsvHeaders}
+                attendeesLinesMode={attendeesLinesMode}
               />
             ) : null}
           </div>
