@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TextElement } from "@/types/types";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
+import { PreviewZoomControls } from "@/components/certificate-designer/PreviewZoomControls";
 import { useFontLoader } from "@/hooks/useFontLoader";
 import { useCertificateTemplateImage } from "@/hooks/useCertificateTemplateImage";
 import {
@@ -11,6 +12,12 @@ import {
   type DrawCertificateOptions,
 } from "@/lib/canvas/draw-text-element";
 import { awaitFontsReady } from "@/lib/canvas/await-fonts";
+import {
+  CERTIFICATE_PREVIEW_HEIGHT,
+  PREVIEW_ZOOM_DEFAULT,
+  buildAdaptiveHeight,
+  clampPreviewZoom,
+} from "@/components/certificate-designer/previewSizing";
 
 interface CertificatePreviewProps {
   imageUrl: string | null;
@@ -22,8 +29,6 @@ interface CertificatePreviewProps {
   imageDimensions: { width: number; height: number };
   previewDrawContext?: DrawCertificateOptions | null;
 }
-
-const PREVIEW_HEIGHT_PX = 500;
 
 export function CertificatePreview({
   imageUrl,
@@ -38,6 +43,7 @@ export function CertificatePreview({
   useFontLoader();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { image: templateImg } = useCertificateTemplateImage(imageUrl);
+  const [zoom, setZoom] = useState(PREVIEW_ZOOM_DEFAULT);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -68,6 +74,11 @@ export function CertificatePreview({
       : templateImg
         ? (templateImg.naturalWidth || 1) / (templateImg.naturalHeight || 1)
         : 1;
+  const adaptiveHeight = buildAdaptiveHeight(
+    CERTIFICATE_PREVIEW_HEIGHT.minPx,
+    CERTIFICATE_PREVIEW_HEIGHT.viewport,
+    CERTIFICATE_PREVIEW_HEIGHT.maxPx
+  );
 
   return (
     <div className="border rounded-md p-4 bg-muted/20">
@@ -103,27 +114,45 @@ export function CertificatePreview({
         )}
       </div>
 
-      <div
-        className="relative border rounded-md overflow-hidden bg-background mx-auto"
-        style={{
-          height: `${PREVIEW_HEIGHT_PX}px`,
-          width: `${PREVIEW_HEIGHT_PX * aspect}px`,
-          maxWidth: "100%",
-        }}
-      >
-        {imageUrl ? (
-          <canvas
-            ref={canvasRef}
-            className="absolute inset-0 w-full h-full"
-            style={{ display: "block" }}
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-muted-foreground">
-              Upload a certificate template to preview
-            </p>
+      <div className="space-y-2">
+        <PreviewZoomControls
+          zoom={zoom}
+          onZoomChange={(nextZoom) => setZoom(clampPreviewZoom(nextZoom))}
+        />
+        <div className="overflow-auto rounded-md">
+          <div className="flex justify-center p-1">
+            <div
+              className="origin-top transition-transform"
+              style={{
+                transform: `scale(${zoom})`,
+                width: `calc(${adaptiveHeight} * ${aspect})`,
+              }}
+            >
+              <div
+                className="relative border rounded-md overflow-hidden bg-background mx-auto"
+                style={{
+                  height: adaptiveHeight,
+                  width: `calc(${adaptiveHeight} * ${aspect})`,
+                  maxWidth: "100%",
+                }}
+              >
+                {imageUrl ? (
+                  <canvas
+                    ref={canvasRef}
+                    className="absolute inset-0 w-full h-full"
+                    style={{ display: "block" }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-muted-foreground">
+                      Upload a certificate template to preview
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
       {attendees.length > 0 && textElements.some((el) => el.type === "name") && (
