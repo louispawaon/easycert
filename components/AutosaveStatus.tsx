@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { easyCertDb } from "@/lib/db/easycert-db";
+import { dittoDb } from "@/lib/db/ditto-db";
 import { formatSavedAtLabel } from "@/lib/db/session-utils";
 
 export function AutosaveStatus() {
-  const row = useLiveQuery(() => easyCertDb.appState.get("default"));
+  const row = useLiveQuery(() => dittoDb.appState.get("default"));
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -22,6 +22,6 @@ export function AutosaveStatus() {
   if (!label) return null;
 
   return (
-    <p className="text-xs text-muted-foreground tabular-nums pt-1">{label}</p>
+    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{label}</span>
   );
 }

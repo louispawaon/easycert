@@ -4,50 +4,50 @@ import { useState } from "react";
 import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/cn";
 import { GenerateHelpHint } from "@/components/generate-help-hint";
+import { cn } from "@/lib/cn";
 
-interface CertificateUploadProps {
+interface TemplateUploadProps {
   imagePreview: string | null;
-  onCertificateFile: (file: File) => void;
-  handleClearCertificate: () => void;
+  onTemplateFile: (file: File) => void;
+  handleClearTemplate: () => void;
   isUploading: boolean;
 }
 
-export function CertificateUpload({
+export function TemplateUpload({
   imagePreview,
-  onCertificateFile,
-  handleClearCertificate,
+  onTemplateFile,
+  handleClearTemplate,
   isUploading,
-}: CertificateUploadProps) {
+}: TemplateUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
 
   return (
-    <div id="easycert-onboarding-certificate-upload" className="min-w-0">
-      <div className="flex items-center gap-1">
-        <Label htmlFor="certificate" className="uppercase font-semibold">
-          Certificate Template
-        </Label>
-        <GenerateHelpHint label="Help: certificate template">
+    <div
+      id="ditto-onboarding-template-upload"
+      className="flex h-full min-h-0 min-w-0 flex-col"
+    >
+      <div className="flex shrink-0 items-center gap-1">
+        <h3 className="font-heading text-sm font-semibold uppercase tracking-tight leading-none">Design Template</h3>
+        <GenerateHelpHint label="Help: design template">
           <span>
-            Upload a clear image of your blank certificate.
-            This image is the background for every certificate.
+            Upload a clear image of your blank design.
+            This image is the background for every output.
           </span>
         </GenerateHelpHint>
       </div>
       {imagePreview ? (
-        <div className="relative mt-2 flex min-h-[300px] w-full items-center justify-center overflow-hidden rounded-md border-2 border-success bg-muted/20 shadow-[0_0_0_4px_hsl(var(--success)/0.12)] transition-[border-color,box-shadow]">
+        <div className="relative mt-3 flex min-h-[240px] flex-1 items-center justify-center overflow-hidden rounded-md border-2 border-success bg-muted/20 shadow-[0_0_0_4px_var(--success-ring)] transition-[border-color,box-shadow]">
           <img
             src={imagePreview}
-            alt="Certificate Preview"
-            className="max-h-[300px] w-full max-w-full object-contain object-center"
+            alt="Design Preview"
+            className="max-h-full max-w-full flex-1 object-contain object-center"
           />
           <Button
             variant="outline"
             size="icon"
             className="absolute top-2 right-2 h-8 w-8 rounded-full border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
-            onClick={handleClearCertificate}
+            onClick={handleClearTemplate}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -55,7 +55,7 @@ export function CertificateUpload({
       ) : (
         <div
           className={cn(
-            "mt-2 flex min-h-[300px] flex-col items-center justify-center rounded-md border border-dashed p-8 w-full",
+            "mt-3 flex min-h-[240px] flex-1 flex-col items-center justify-center rounded-md border border-dashed p-8 w-full",
             isDragging && "bg-primary/10"
           )}
           onDragEnter={(e) => {
@@ -79,7 +79,7 @@ export function CertificateUpload({
             e.stopPropagation();
             setIsDragging(false);
             const file = e.dataTransfer.files?.[0];
-            if (file) onCertificateFile(file);
+            if (file) onTemplateFile(file);
           }}
         >
           {isUploading ? (
@@ -89,7 +89,7 @@ export function CertificateUpload({
             </div>
           ) : (
             <label
-              htmlFor="certificate"
+              htmlFor="template"
               className="cursor-pointer group flex flex-col items-center"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
@@ -99,13 +99,13 @@ export function CertificateUpload({
                 Click to upload or drag and drop
               </p>
               <Input
-                id="certificate"
+                id="template"
                 type="file"
                 accept="image/*"
                 className="hidden"
                 onChange={(ev) => {
                   const file = ev.target.files?.[0];
-                  if (file) onCertificateFile(file);
+                  if (file) onTemplateFile(file);
                 }}
                 disabled={isUploading}
               />

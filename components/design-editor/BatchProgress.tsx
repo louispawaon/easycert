@@ -23,7 +23,7 @@ function formatEta(seconds: number): string {
 function phaseLabel(phase: BatchProgressType["phase"]): string {
   switch (phase) {
     case "rendering":
-      return "Rendering certificates";
+      return "Rendering outputs";
     case "zipping":
       return "Compressing archive";
     case "done":
@@ -125,11 +125,11 @@ export function BatchProgress({ progress, onCancel, className }: BatchProgressPr
       <div
         className="h-2 w-full overflow-hidden rounded-full bg-border"
         role="progressbar"
-        aria-label="Certificate batch progress"
+        aria-label="Batch progress"
         aria-valuemin={0}
         aria-valuemax={progress.total}
         aria-valuenow={progress.current}
-        aria-valuetext={`${percent}% complete, ${progress.current} of ${progress.total} certificates`}
+        aria-valuetext={`${percent}% complete, ${progress.current} of ${progress.total} outputs`}
       >
         <div
           className={cn(

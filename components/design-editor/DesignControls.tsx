@@ -1,9 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Plus, Upload, Loader2 } from "lucide-react";
-import { TextElement } from "@/types/types";
-import type { TextProperties } from "@/hooks/useCertificateDesigner";
+import { Plus, Upload, Loader2, Link, User, Type } from "lucide-react";
+import type { TextElement, DesignElement } from "@/types/types";
+import type { TextProperties } from "@/hooks/useDesignerController";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/useToast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -18,44 +18,55 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { GenerateHelpHint } from "@/components/generate-help-hint";
+import { LayersList } from "@/components/design-editor/LayersList";
 
-interface CertificateControlsProps {
+interface DesignControlsProps {
   onInsertStatic: () => void;
-  onInsertAttendeeName: () => void;
+  onInsertRecordName: () => void;
   onInsertFieldFromCsv: (columnKey: string) => void;
-  attendeeCsvHeaders: string[];
+  onInsertQr: () => void;
+  recordCsvHeaders: string[];
   /** When true (paste / TXT / JSON / single-column CSV), hide column picker UX. */
-  attendeesLinesMode: boolean;
+  recordLinesMode: boolean;
+  placedElements: DesignElement[];
   textElements: TextElement[];
   onLoadPreset: (properties: Partial<TextProperties>) => void;
   imageUrl: string | null;
+  selectedElement: string | null;
+  onElementSelect: (id: string | null) => void;
 }
 
-export function CertificateControls({
+export function DesignControls({
   onInsertStatic,
-  onInsertAttendeeName,
+  onInsertRecordName,
   onInsertFieldFromCsv,
-  attendeeCsvHeaders,
-  attendeesLinesMode,
+  onInsertQr,
+  recordCsvHeaders,
+  recordLinesMode,
+  placedElements,
   textElements,
   onLoadPreset,
   imageUrl,
-}: CertificateControlsProps) {
+  selectedElement,
+  onElementSelect,
+}: DesignControlsProps) {
   const { toast } = useToast();
+  const sidebarButtonClass =
+    "h-auto min-h-9 w-full justify-start whitespace-normal py-2 leading-snug [&_svg]:shrink-0";
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [presetDropActive, setPresetDropActive] = useState(false);
   const presetFileInputRef = useRef<HTMLInputElement>(null);
 
   const csvFieldKeyStable = useMemo(
-    () => attendeeCsvHeaders[0] ?? "",
-    [attendeeCsvHeaders]
+    () => recordCsvHeaders[0] ?? "",
+    [recordCsvHeaders]
   );
   const [csvFieldKey, setCsvFieldKey] = useState(csvFieldKeyStable);
 
   useEffect(() => {
-    setCsvFieldKey((cur) => (attendeeCsvHeaders.includes(cur) ? cur : csvFieldKeyStable));
-  }, [attendeeCsvHeaders, csvFieldKeyStable]);
+    setCsvFieldKey((cur) => (recordCsvHeaders.includes(cur) ? cur : csvFieldKeyStable));
+  }, [recordCsvHeaders, csvFieldKeyStable]);
 
   const processPresetFile = (file: File) => {
     setIsLoading(true);
@@ -147,46 +158,46 @@ export function CertificateControls({
   };
 
   return (
-    <div className="border rounded-md p-3 sm:p-4">
-      <div className="mb-3 flex items-center gap-1">
-        <h3 className="text-base sm:text-lg font-semibold">Add Elements</h3>
-        <GenerateHelpHint label="Help: add text elements">
-          <span>
-            {attendeesLinesMode
-              ? "Add a name field for each attendee. You can also add fixed text like event title or date."
-              : "Pick a column from your file, then place it on the certificate as live text."}{" "}
-            Upload your template image before placing text.
-          </span>
-        </GenerateHelpHint>
-      </div>
-      <div className="space-y-4">
-        <div className="space-y-2">
-          {attendeesLinesMode ? (
+    <div className="min-w-0 space-y-4">
+      <div className="min-w-0 space-y-4">
+        <div className="min-w-0 space-y-2">
+          <div className="flex min-w-0 items-center gap-1">
+            <h3 className="font-heading text-sm font-semibold uppercase tracking-tight leading-none">Text</h3>
+            <GenerateHelpHint label="Help: add text elements">
+              <span>
+                {recordLinesMode
+                  ? "Add a name field for each record. You can also add fixed text like event title or date."
+                  : "Pick a column from your file, then place it on the design as live text."}{" "}
+                Upload your template image before placing text.
+              </span>
+            </GenerateHelpHint>
+          </div>
+          {recordLinesMode ? (
             <Button
-              onClick={() => onInsertAttendeeName()}
-              className="w-full justify-start"
+              onClick={() => onInsertRecordName()}
+              className={sidebarButtonClass}
               variant="outline"
               disabled={!imageUrl}
             >
-              <Plus className="mr-2 h-4 w-4" />
-              Insert Attendee Name
+              <User className="mr-2 h-4 w-4" />
+              Insert Record Name
             </Button>
           ) : (
-            <div className="space-y-2">
-              <div className="space-y-2">
-                <Label className="text-xs font-medium uppercase text-muted-foreground">
+            <div className="min-w-0 space-y-2">
+              <div className="min-w-0 space-y-2">
+                <Label className="text-xs font-medium uppercase leading-snug text-muted-foreground">
                   Choose info to show
                 </Label>
                 <Select
                   value={csvFieldKey || csvFieldKeyStable}
                   onValueChange={setCsvFieldKey}
-                  disabled={attendeeCsvHeaders.length === 0}
+                  disabled={recordCsvHeaders.length === 0}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="min-w-0 w-full">
                     <SelectValue placeholder="Choose from your uploaded list" />
                   </SelectTrigger>
                   <SelectContent>
-                    {attendeeCsvHeaders.map((header) => (
+                    {recordCsvHeaders.map((header) => (
                       <SelectItem key={header} value={header}>
                         {header}
                       </SelectItem>
@@ -196,10 +207,10 @@ export function CertificateControls({
               </div>
               <Button
                 onClick={() => onInsertFieldFromCsv(csvFieldKey || csvFieldKeyStable)}
-                className="w-full justify-start"
+                className={sidebarButtonClass}
                 variant="outline"
                 disabled={
-                  !imageUrl || attendeeCsvHeaders.length === 0 || !(csvFieldKey || csvFieldKeyStable)
+                  !imageUrl || recordCsvHeaders.length === 0 || !(csvFieldKey || csvFieldKeyStable)
                 }
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -209,20 +220,42 @@ export function CertificateControls({
           )}
           <Button
             onClick={() => onInsertStatic()}
-            className="w-full justify-start"
+            className={sidebarButtonClass}
             variant="outline"
             disabled={!imageUrl}
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Type className="mr-2 h-4 w-4" />
             Insert Subtext
           </Button>
         </div>
 
+        <div className="min-w-0 space-y-2 border-t pt-4">
+          <div className="flex min-w-0 items-center gap-1">
+            <h3 className="font-heading text-sm font-semibold uppercase tracking-tight leading-none">Proof</h3>
+            <GenerateHelpHint label="Help: proof link">
+              <span>
+                Adds a shareable proof link that renders as a QR code. Each output gets a unique
+                signed link that can be verified by scanning.
+              </span>
+            </GenerateHelpHint>
+          </div>
+          <Button
+            onClick={() => onInsertQr()}
+            className={sidebarButtonClass}
+            variant="outline"
+            disabled={!imageUrl}
+          >
+            <Link className="mr-2 h-4 w-4" />
+            Insert Proof Link
+          </Button>
+        </div>
+
+
         {textElements.length > 0 && (
-          <div className="pt-2 border-t">
+          <div className="border-t pt-4">
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className={sidebarButtonClass}>
                   <Upload className="mr-2 h-4 w-4" />
                   Load Preset
                 </Button>
@@ -289,6 +322,17 @@ export function CertificateControls({
             </Dialog>
           </div>
         )}
+        <div className="border-t pt-4">
+          <div className="mb-3 flex min-w-0 items-center gap-1">
+            <h3 className="font-heading text-sm font-semibold uppercase tracking-tight leading-none">Placed elements</h3>
+          </div>
+          <LayersList
+            elements={placedElements}
+            textElements={textElements}
+            selectedElement={selectedElement}
+            onSelect={onElementSelect}
+          />
+        </div>
       </div>
     </div>
   );

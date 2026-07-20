@@ -13,21 +13,22 @@ import { useFontLoader } from '@/hooks/useFontLoader';
 import { useFontUpload } from '@/hooks/useFontUpload';
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/cn";
+import { normalizeHexColor } from "@/lib/utils";
 import { GenerateHelpHint } from "@/components/generate-help-hint";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast, toast as showToast } from "@/hooks/useToast";
 import { getCustomFonts } from '@/lib/fonts';
-import type { TextProperties } from "@/hooks/useCertificateDesigner";
+import type { TextProperties } from "@/hooks/useDesignerController";
 
 interface TextElementEditorProps {
   element: TextElement;
-  onUpdate: (property: keyof TextElement, value: string | number | undefined) => void;
+  onUpdate: (property: string, value: string | number | undefined) => void;
   onRemove: () => void;
-  attendeeCsvHeaders: string[];
-  attendeesLinesMode: boolean;
+  recordCsvHeaders: string[];
+  recordLinesMode: boolean;
 }
 
-const BIND_FIRST_COLUMN = "__easycert_first_column__";
+const BIND_FIRST_COLUMN = "__ditto_first_column__";
 
 function clampPct(value: number, min = 0, max = 1): number {
   if (Number.isNaN(value)) return min;
@@ -42,8 +43,8 @@ export function TextElementEditor({
   element,
   onUpdate,
   onRemove,
-  attendeeCsvHeaders,
-  attendeesLinesMode,
+  recordCsvHeaders,
+  recordLinesMode,
 }: TextElementEditorProps) {
   const { toast } = useToast();
   const blobFontWarningShownRef = useRef(false);
@@ -172,10 +173,10 @@ export function TextElementEditor({
   const hasFontValue = fontOptions.some((option) => option.value === element.fontFamily);
 
   return (
-    <div className="border rounded-md p-3 sm:p-4">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-        <div className="flex items-center gap-1">
-          <h3 className="text-base sm:text-lg font-semibold">Element Properties</h3>
+    <div className="min-w-0 space-y-4">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1">
+          <h3 className="font-heading text-sm font-semibold uppercase tracking-tight leading-none">Element Properties</h3>
           <GenerateHelpHint label="Help: text styling">
             <span>
               Edit font, size, color, and position for the selected text.
@@ -221,39 +222,28 @@ export function TextElementEditor({
         </div>
       </div>
 
-      {element.type === 'static' && (
-        <div className="space-y-2 mb-4">
-          <Label htmlFor="text-content">Text Content</Label>
-          <Input
-            id="text-content"
-            value={element.value ?? ''}
-            onChange={(e) => onUpdate('value', e.target.value)}
-          />
-        </div>
-      )}
-
-      {element.type === "name" &&
-        !attendeesLinesMode &&
-        attendeeCsvHeaders.length > 1 && (
-          <div className="mb-4 space-y-2">
+      {(element.type === "dynamic-text" || element.type === "name") &&
+        !recordLinesMode &&
+        recordCsvHeaders.length > 1 && (
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="csv-column-bind">CSV column</Label>
             <Select
-              value={element.variableColumn ?? BIND_FIRST_COLUMN}
+              value={(element.variable ?? element.variableColumn) ?? BIND_FIRST_COLUMN}
               onValueChange={(value) =>
                 onUpdate(
-                  "variableColumn",
+                  "variable",
                   value === BIND_FIRST_COLUMN ? undefined : value
                 )
               }
             >
-              <SelectTrigger id="csv-column-bind">
+              <SelectTrigger id="csv-column-bind" className="min-w-0 w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={BIND_FIRST_COLUMN}>
                   First column (default)
                 </SelectItem>
-                {attendeeCsvHeaders.map((h) => (
+                {recordCsvHeaders.map((h) => (
                   <SelectItem key={h} value={h}>
                     {h}
                   </SelectItem>
@@ -263,14 +253,74 @@ export function TextElementEditor({
           </div>
         )}
 
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label className="flex items-center gap-2">Font Settings</Label>
+      <div className="min-w-0 space-y-4 border-t pt-4">
+        <div className="min-w-0 space-y-2">
+          <Label className="flex items-center gap-2 leading-snug">Position (center anchor)</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label htmlFor="pos-x" className="text-xs">X (%)</Label>
+              <Input
+                id="pos-x"
+                type="number"
+                min={0}
+                max={100}
+                step={0.1}
+                value={xPctDisplay}
+                onChange={(e) => onUpdate('x', clampPct(Number(e.target.value) / 100))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="pos-y" className="text-xs">Y (%)</Label>
+              <Input
+                id="pos-y"
+                type="number"
+                min={0}
+                max={100}
+                step={0.1}
+                value={yPctDisplay}
+                onChange={(e) => onUpdate('y', clampPct(Number(e.target.value) / 100))}
+              />
+            </div>
+          </div>
+        </div>
 
-          <div className="space-y-2">
+        <div className="min-w-0 space-y-2 border-t pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="max-width" className="leading-snug">Max Width</Label>
+            <div className="flex items-center gap-1">
+              <Input
+                id="max-width-input"
+                type="number"
+                min={5}
+                max={100}
+                step={1}
+                value={Math.round(element.maxWidthPct * 100)}
+                onChange={(e) => onUpdate('maxWidthPct', clampPct(Number(e.target.value) / 100, 0.05, 1))}
+                className="h-8 w-16 text-right"
+              />
+              <span className="text-sm text-muted-foreground">%</span>
+            </div>
+          </div>
+          <Slider
+            id="max-width"
+            min={10}
+            max={100}
+            step={1}
+            value={[Math.round(element.maxWidthPct * 100)]}
+            onValueChange={(value) => onUpdate('maxWidthPct', clampPct(value[0] / 100, 0.05, 1))}
+          />
+          <p className="text-xs leading-snug text-muted-foreground">
+            Maximum text width as a percentage of the canvas width. Values that exceed this width are auto-shrunk.
+          </p>
+        </div>
+
+        <div className="min-w-0 space-y-2 border-t pt-4">
+          <Label className="flex items-center gap-2 leading-snug">Font Settings</Label>
+
+          <div className="min-w-0 space-y-2">
             <Button
               variant="outline"
-              className="w-full justify-between"
+              className="h-auto min-h-9 w-full justify-between whitespace-normal py-2 leading-snug"
               onClick={() => setShowFontUpload(!showFontUpload)}
             >
               + Add Custom Font
@@ -348,7 +398,7 @@ export function TextElementEditor({
             value={hasFontValue ? element.fontFamily : undefined}
             onValueChange={(value) => onUpdate('fontFamily', value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="min-w-0 w-full">
               <SelectValue placeholder="Select font" />
             </SelectTrigger>
             <SelectContent>
@@ -376,13 +426,13 @@ export function TextElementEditor({
               onValueChange={(value) => onUpdate('fontSize', value[0])}
             />
             <p className="text-xs text-muted-foreground">
-              Long names auto-shrink to fit the max width below.
+              Long values auto-shrink to fit the max width below.
             </p>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Font Style</Label>
+        <div className="min-w-0 space-y-2 border-t pt-4">
+          <Label className="leading-snug">Font Style</Label>
           <div className="flex flex-wrap gap-2">
             <Toggle
               variant="outline"
@@ -416,72 +466,24 @@ export function TextElementEditor({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="text-color" className="flex items-center gap-2">Text Color</Label>
+        <div className="min-w-0 space-y-2 border-t pt-4">
+          <Label htmlFor="text-color" className="flex items-center gap-2 leading-snug">
+            Text Color
+          </Label>
           <div className="flex flex-col sm:flex-row gap-2">
             <Input
               id="text-color"
               type="color"
               value={element.color}
-              onChange={(e) => onUpdate('color', e.target.value)}
+              onChange={(e) => onUpdate('color', normalizeHexColor(e.target.value))}
               className="h-10 w-full sm:w-12 p-1"
             />
             <Input
               value={element.color}
-              onChange={(e) => onUpdate('color', e.target.value)}
-              className="flex-1"
+              onChange={(e) => onUpdate('color', normalizeHexColor(e.target.value))}
+              className="min-w-0 flex-1 font-mono lowercase"
             />
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label className="flex items-center gap-2">Position (center anchor)</Label>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label htmlFor="pos-x" className="text-xs">X (%)</Label>
-              <Input
-                id="pos-x"
-                type="number"
-                min={0}
-                max={100}
-                step={0.1}
-                value={xPctDisplay}
-                onChange={(e) => onUpdate('x', clampPct(Number(e.target.value) / 100))}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="pos-y" className="text-xs">Y (%)</Label>
-              <Input
-                id="pos-y"
-                type="number"
-                min={0}
-                max={100}
-                step={0.1}
-                value={yPctDisplay}
-                onChange={(e) => onUpdate('y', clampPct(Number(e.target.value) / 100))}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <Label htmlFor="max-width">Max Width</Label>
-            <span className="text-sm text-muted-foreground">
-              {Math.round(element.maxWidthPct * 100)}%
-            </span>
-          </div>
-          <Slider
-            id="max-width"
-            min={10}
-            max={100}
-            step={1}
-            value={[Math.round(element.maxWidthPct * 100)]}
-            onValueChange={(value) => onUpdate('maxWidthPct', clampPct(value[0] / 100, 0.05, 1))}
-          />
-          <p className="text-xs text-muted-foreground">
-            Maximum text width as a percentage of the canvas width. Names that exceed this width are auto-shrunk.
-          </p>
         </div>
       </div>
     </div>
