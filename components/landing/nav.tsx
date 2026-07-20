@@ -51,7 +51,7 @@ export function LandingNav() {
               priority
             />
           </div>
-          <span className="text-lg font-semibold tracking-tight">Ditto</span>
+          <span className="font-heading text-2xl font-semibold tracking-tight">Ditto</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

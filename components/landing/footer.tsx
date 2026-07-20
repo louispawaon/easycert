@@ -37,7 +37,7 @@ export function LandingFooter() {
                   className="size-full object-contain dark:invert"
                 />
               </div>
-              <span className="text-lg font-semibold tracking-tight">Ditto</span>
+              <span className="font-heading text-2xl font-semibold tracking-tight">Ditto</span>
             </div>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
               You made one. Ditto the rest. A bulk design personalization tool
