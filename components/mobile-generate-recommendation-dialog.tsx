@@ -54,20 +54,20 @@ export function MobileGenerateRecommendationDialog() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="top-[42%] max-w-[min(100vw-2rem,24rem)] gap-5 border-warning bg-warning/10 text-warning-foreground sm:top-[50%]">
-        <DialogHeader className="space-y-3 text-center sm:text-left">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-warning/20 sm:mx-0">
+      <DialogContent className="top-[42%] max-w-[min(100vw-2rem,24rem)] gap-5 sm:top-[50%]">
+        <DialogHeader className="space-y-3 text-center">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-warning/30 bg-warning/10 text-warning">
             <Smartphone className="h-5 w-5" aria-hidden />
           </div>
           <DialogTitle className="text-balance">
             Desktop or tablet recommended
           </DialogTitle>
-          <DialogDescription className="text-balance text-warning-foreground/80">
+          <DialogDescription className="text-balance">
             For the best experience, we recommend using Ditto on a desktop or
             tablet.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="sm:justify-center">
+        <DialogFooter className="justify-center">
           <Button
             type="button"
             className="w-full sm:w-auto"
