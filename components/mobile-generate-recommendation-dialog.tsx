@@ -16,7 +16,7 @@ import {
 
 const MOBILE_MQ = "(max-width: 767px)"
 export const MOBILE_GENERATE_RECOMMENDATION_SESSION_KEY =
-  "easycert-generate-mobile-recommendation-dismissed" as const
+  "ditto-generate-mobile-recommendation-dismissed" as const
 const SESSION_KEY = MOBILE_GENERATE_RECOMMENDATION_SESSION_KEY
 
 export function MobileGenerateRecommendationDialog() {
@@ -54,16 +54,16 @@ export function MobileGenerateRecommendationDialog() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="top-[42%] max-w-[min(100vw-2rem,24rem)] gap-5 border-yellow-400 bg-yellow-50 text-yellow-950 dark:border-yellow-600 dark:bg-yellow-950 dark:text-yellow-50 sm:top-[50%]">
+      <DialogContent className="top-[42%] max-w-[min(100vw-2rem,24rem)] gap-5 border-warning bg-warning/10 text-warning-foreground sm:top-[50%]">
         <DialogHeader className="space-y-3 text-center sm:text-left">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-yellow-200/80 dark:bg-yellow-900/80 sm:mx-0">
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-warning/20 sm:mx-0">
             <Smartphone className="h-5 w-5" aria-hidden />
           </div>
           <DialogTitle className="text-balance">
             Desktop or tablet recommended
           </DialogTitle>
-          <DialogDescription className="text-balance text-yellow-900/90 dark:text-yellow-100/90">
-            For the best experience, we recommend using EasyCert on a desktop or
+          <DialogDescription className="text-balance text-warning-foreground/80">
+            For the best experience, we recommend using Ditto on a desktop or
             tablet.
           </DialogDescription>
         </DialogHeader>
