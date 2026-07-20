@@ -3,60 +3,74 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/useToast";
-import { easyCertDb, type AttendeeEntryTab } from "@/lib/db/easycert-db";
+import { dittoDb, type RecordEntryTab, type RecordManualMode, type RecordTable } from "@/lib/db/ditto-db";
 import {
-  saveCertificateImage,
-  saveAttendeeListText,
-  saveAttendeeTable,
-  saveAttendeeEntryTab,
+  saveTemplateImage,
+  saveRecordListText,
+  saveRecordTable,
+  saveRecordEntryTab,
+  saveRecordManualMode,
   saveFilenameColumn,
 } from "@/lib/db/app-state";
-import { defaultFilenameColumn } from "@/lib/attendees/attendee-dataset";
-import { mirrorLinesFromFirstColumn, parseAttendeeCsv } from "@/lib/csv/parse-attendee-csv";
-import type { ParseCsvResult } from "@/lib/csv/parse-attendee-csv";
+import { defaultFilenameColumn } from "@/lib/records/record-dataset";
+import { mirrorLinesFromFirstColumn, parseRecordCsv } from "@/lib/csv/parse-record-csv";
+import type { ParseCsvResult } from "@/lib/csv/parse-record-csv";
+import { recordsToSimpleList } from "@/lib/records/manual-input";
 import {
-  notifyCertificateImageCleared,
-  notifyCertificateImageUploaded,
-} from "@/store/certificate-image-bridge";
+  notifyTemplateImageCleared,
+  notifyTemplateImageUploaded,
+} from "@/store/template-image-bridge";
 
 export function useFileUpload() {
   const { toast } = useToast();
-  const row = useLiveQuery(() => easyCertDb.appState.get("default"));
-  const [attendeeList, setAttendeeList] = useState("");
-  const [attendeeEntryTab, setAttendeeEntryTab] = useState<AttendeeEntryTab>("upload");
+  const row = useLiveQuery(() => dittoDb.appState.get("default"));
+  const [recordListText, setRecordListText] = useState("");
+  const [recordEntryTab, setRecordEntryTab] = useState<RecordEntryTab>("upload");
+  const [recordManualMode, setRecordManualMode] = useState<RecordManualMode>("simple");
   const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (row === undefined) return;
-    if (row.attendeeTable) {
-      // File-backed datasets should not populate the manual textarea.
-      setAttendeeList("");
+    if (row.recordTable) {
+      setRecordListText(recordsToSimpleList(row.recordTable));
       return;
     }
-    setAttendeeList(row.attendeeListText ?? "");
-  }, [row?.attendeeListText, row?.attendeeTable]);
+    setRecordListText(row.recordListText ?? "");
+  }, [row?.recordListText, row?.recordTable]);
 
   useEffect(() => {
-    if (row?.attendeeEntryTab === "upload" || row?.attendeeEntryTab === "manual") {
-      setAttendeeEntryTab(row.attendeeEntryTab);
+    if (row?.recordEntryTab === "upload" || row?.recordEntryTab === "manual") {
+      setRecordEntryTab(row.recordEntryTab);
     }
-  }, [row?.attendeeEntryTab]);
+  }, [row?.recordEntryTab]);
 
-  const handleAttendeeEntryTabChange = (value: string) => {
+  useEffect(() => {
+    if (row?.recordManualMode === "simple" || row?.recordManualMode === "table" || row?.recordManualMode === "json") {
+      setRecordManualMode(row.recordManualMode);
+    }
+  }, [row?.recordManualMode]);
+
+  const handleRecordEntryTabChange = (value: string) => {
     if (value !== "upload" && value !== "manual") return;
-    setAttendeeEntryTab(value);
-    void saveAttendeeEntryTab(value);
+    setRecordEntryTab(value);
+    void saveRecordEntryTab(value);
   };
 
-  const imagePreview = localImagePreview ?? row?.certificateImageUrl ?? null;
+  const handleRecordManualModeChange = (value: string) => {
+    if (value !== "simple" && value !== "table" && value !== "json") return;
+    setRecordManualMode(value);
+    void saveRecordManualMode(value);
+  };
 
-  const attendeeTable = row?.attendeeTable;
-  const attendeeFilenameColumnPick = attendeeTable?.headers.length
-    ? (row?.filenameColumn ?? defaultFilenameColumn(attendeeTable.headers) ?? attendeeTable.headers[0])
+  const imagePreview = localImagePreview ?? row?.templateImageUrl ?? null;
+
+  const recordTable = row?.recordTable;
+  const recordFilenameColumnPick = recordTable?.headers.length
+    ? (row?.filenameColumn ?? defaultFilenameColumn(recordTable.headers) ?? recordTable.headers[0])
     : undefined;
 
-  const processCertificateFile = useCallback(
+  const processTemplateFile = useCallback(
     (file: File) => {
       const MAX_SIZE = 5 * 1024 * 1024;
       if (file.size > MAX_SIZE) {
@@ -74,7 +88,7 @@ export function useFileUpload() {
         setIsUploading(false);
         toast({
           title: "Invalid file type",
-          description: "Please upload an image file for the certificate template.",
+          description: "Please upload an image file for the design template.",
           variant: "destructive",
         });
         return;
@@ -85,11 +99,11 @@ export function useFileUpload() {
         const imageUrl = event.target?.result as string;
         setLocalImagePreview(imageUrl);
         setIsUploading(false);
-        notifyCertificateImageUploaded(imageUrl);
-        void saveCertificateImage(imageUrl);
+        notifyTemplateImageUploaded(imageUrl);
+        void saveTemplateImage(imageUrl);
         toast({
-          title: "Certificate template uploaded",
-          description: "Your certificate template has been uploaded successfully.",
+          title: "Design template uploaded",
+          description: "Your design template has been uploaded successfully.",
         });
       };
 
@@ -107,12 +121,12 @@ export function useFileUpload() {
     [toast]
   );
 
-  const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTemplateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) processCertificateFile(file);
+    if (file) processTemplateFile(file);
   };
 
-  const handleAttendeeFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRecordFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
     const file = e.target.files[0];
     const lower = file.name.toLowerCase();
@@ -127,13 +141,13 @@ export function useFileUpload() {
         return;
       }
       const mirrored = mirrorLinesFromFirstColumn(parsed.table);
-      await saveAttendeeTable(parsed.table, mirrored);
+      await saveRecordTable(parsed.table, mirrored);
       // Keep manual tab clean; uploaded file data is represented in upload mode summary.
-      setAttendeeList("");
-      setAttendeeEntryTab("upload");
-      await saveAttendeeEntryTab("upload");
+      setRecordListText("");
+      setRecordEntryTab("upload");
+      await saveRecordEntryTab("upload");
       toast({
-        title: `Attendee ${sourceLabel} uploaded`,
+        title: `Record ${sourceLabel} uploaded`,
         description: `${parsed.table.rows.length} rows · ${parsed.table.headers.length} columns`,
       });
     };
@@ -144,15 +158,15 @@ export function useFileUpload() {
         try {
           if (lower.endsWith(".xlsx") || lower.endsWith(".xlsm")) {
             const content = event.target?.result as ArrayBuffer;
-            const { parseAttendeeXlsx } = await import("@/lib/xlsx/parse-attendee-xlsx");
-            const parsed = await parseAttendeeXlsx(content);
+            const { parseRecordXlsx } = await import("@/lib/xlsx/parse-record-xlsx");
+            const parsed = await parseRecordXlsx(content);
             await persistParsedTable(parsed, "Excel file");
             return;
           }
 
           const content = event.target?.result as string;
           if (lower.endsWith(".csv")) {
-            const parsed = parseAttendeeCsv(content);
+            const parsed = parseRecordCsv(content);
             await persistParsedTable(parsed, "CSV");
             return;
           }
@@ -170,17 +184,17 @@ export function useFileUpload() {
             }
           }
 
-          setAttendeeList(listText);
-          void saveAttendeeListText(listText);
+          setRecordListText(listText);
+          void saveRecordListText(listText);
 
           toast({
-            title: "Attendee list uploaded",
-            description: "Your attendee list has been uploaded successfully.",
+            title: "Record list uploaded",
+            description: "Your record list has been uploaded successfully.",
           });
         } catch {
           toast({
             title: "Error parsing file",
-            description: "There was an error parsing the attendee file.",
+            description: "There was an error parsing the record file.",
             variant: "destructive",
           });
         }
@@ -194,42 +208,66 @@ export function useFileUpload() {
     e.target.value = "";
   };
 
-  const handleClearCertificate = () => {
+  const handleClearTemplate = () => {
     setLocalImagePreview(null);
-    notifyCertificateImageCleared();
-    void saveCertificateImage(null);
+    notifyTemplateImageCleared();
+    void saveTemplateImage(null);
   };
 
-  const handleClearAttendees = () => {
-    setAttendeeList("");
-    void saveAttendeeListText("");
+  const handleClearRecords = () => {
+    setRecordListText("");
+    void saveRecordListText("");
+    void saveRecordTable({ headers: [], rows: [] }, "");
   };
 
-  const handleManualAttendeeChange = (value: string) => {
-    setAttendeeList(value);
-    void saveAttendeeListText(value);
+  const handleManualRecordChange = (value: string) => {
+    setRecordListText(value);
+    void saveRecordListText(value);
   };
+
+  const handleManualSimpleChange = useCallback((value: string) => {
+    setRecordListText(value);
+    const table = { headers: ["Value"], rows: value.split("\n").map((l) => [l.trim()]) };
+    void saveRecordListText(value);
+    void saveRecordTable(table, value);
+  }, []);
+
+  const handleManualTableChange = useCallback((table: RecordTable, mirror: string) => {
+    setRecordListText(mirror);
+    void saveRecordTable(table, mirror);
+  }, []);
+
+  const handleManualJsonChange = useCallback((table: RecordTable, json: string) => {
+    const mirror = table.headers.length > 0 ? table.rows.map((r) => (r[0] ?? "").trim()).join("\n") : "";
+    setRecordListText(mirror);
+    void saveRecordTable(table, mirror);
+  }, []);
 
   const persistFilenameColumn = useCallback((headerKey: string) => {
     void saveFilenameColumn(headerKey);
   }, []);
 
   return {
-    attendeeList,
-    attendeeEntryTab,
+    recordListText,
+    recordEntryTab,
+    recordManualMode,
     imagePreview,
     isUploading,
-    attendeeTable,
-    attendeeRowCount: attendeeTable?.rows.length ?? attendeeList.split("\n").filter((l) => l.trim()).length,
-    attendeeCsvColumnCount: attendeeTable?.headers.length ?? 0,
-    attendeeFilenameColumnPick,
+    recordTable,
+    recordRowCount: recordTable?.rows.length ?? recordListText.split("\n").filter((l) => l.trim()).length,
+    recordCsvColumnCount: recordTable?.headers.length ?? 0,
+    recordFilenameColumnPick,
     persistFilenameColumn,
-    processCertificateFile,
-    handleCertificateUpload,
-    handleAttendeeFileUpload,
-    handleClearCertificate,
-    handleClearAttendees,
-    handleManualAttendeeChange,
-    handleAttendeeEntryTabChange,
+    processTemplateFile,
+    handleTemplateUpload,
+    handleRecordFileUpload,
+    handleClearTemplate,
+    handleClearRecords,
+    handleManualRecordChange,
+    handleRecordEntryTabChange,
+    handleRecordManualModeChange,
+    handleManualSimpleChange,
+    handleManualTableChange,
+    handleManualJsonChange,
   };
 }

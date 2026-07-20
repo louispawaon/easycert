@@ -13,7 +13,10 @@ export async function awaitFontsReady(elements: TextElement[] = []): Promise<voi
   const fontSet = new Set<string>();
   for (const el of elements) {
     if (!el.fontFamily) continue;
-    fontSet.add(`${el.fontWeight} ${Math.max(1, Math.round(el.fontSize))}px "${el.fontFamily}"`);
+    const fontStyle = el.fontStyle ?? "normal";
+    fontSet.add(
+      `${fontStyle} ${el.fontWeight} ${Math.max(1, Math.round(el.fontSize))}px "${el.fontFamily}"`
+    );
   }
 
   const loadPromises: Promise<unknown>[] = [];

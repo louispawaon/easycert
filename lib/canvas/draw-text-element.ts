@@ -1,5 +1,8 @@
-import type { TextElement } from "@/types/types";
-import { NAME_PLACEHOLDER } from "@/types/types";
+import type { TextElement, ProofLinkElement } from "@/types/types";
+import { DYNAMIC_TEXT_PLACEHOLDER } from "@/types/types";
+import { drawProofLinkElement } from "@/lib/canvas/draw-proof-link-element";
+import { computeProofLinkRenderDimensions } from "@/lib/canvas/proof-link-render";
+import { buildProofSizingPlaceholderUrl } from "@/lib/proof/url";
 
 const MIN_FONT_SIZE_PX = 10;
 
@@ -10,34 +13,39 @@ export type ResolvedText = {
   height: number;
 };
 
-export type AttendeeDrawContext = {
-  /** Whole-line fallback (paste/TEXT list) or primary display line for filenames. */
+export type RecordDrawContext = {
+  recordLabel?: string | null;
+  record?: Record<string, string> | null;
+  headers?: string[];
+  /** @deprecated Use `recordLabel` instead. */
   attendeeName?: string | null;
-  /** Tabular CSV row keyed by normalized header strings. */
+  /** @deprecated Use `record` instead. */
   attendeeRow?: Record<string, string> | null;
-  /** Column order from the CSV header row (matches `variableColumn` keys). */
+  /** @deprecated Use `headers` instead. */
   tableHeadersOrdered?: string[];
+  /** @deprecated Not used in new model. */
   namePlaceholder?: string;
 };
 
-/**
- * Resolve the rendered text for an element given optional line and/or CSV row context.
- */
+/** @deprecated Use `RecordDrawContext` instead. */
+export type AttendeeDrawContext = RecordDrawContext;
+
 export function resolveElementText(
   element: TextElement,
-  drawCtx: AttendeeDrawContext = {}
+  drawCtx: RecordDrawContext = {}
 ): string {
-  const namePlaceholder = drawCtx.namePlaceholder ?? NAME_PLACEHOLDER;
+  const namePlaceholder = (drawCtx as Record<string, unknown>).namePlaceholder as string | undefined ?? DYNAMIC_TEXT_PLACEHOLDER;
 
   if (element.type === "static") return element.value ?? "";
 
-  const row = drawCtx.attendeeRow ?? null;
-  const keys = drawCtx.tableHeadersOrdered ?? [];
-  const primaryLine = (drawCtx.attendeeName ?? "").trim();
+  const variable = element.variable ?? element.variableColumn;
+  const row = drawCtx.record ?? drawCtx.attendeeRow ?? null;
+  const keys = drawCtx.headers ?? drawCtx.tableHeadersOrdered ?? [];
+  const primaryLine = (drawCtx.recordLabel ?? drawCtx.attendeeName ?? "").trim();
   let raw: string | undefined;
 
-  if (element.variableColumn) {
-    const cell = row?.[element.variableColumn]?.trim();
+  if (variable) {
+    const cell = row?.[variable]?.trim();
     raw =
       cell && cell.length > 0
         ? cell
@@ -58,7 +66,7 @@ export function resolveElementText(
   }
 
   if (raw !== undefined && raw.length > 0) return raw;
-  if (element.variableColumn) return `{${element.variableColumn}}`;
+  if (variable) return `{${variable}}`;
   return namePlaceholder;
 }
 
@@ -68,26 +76,22 @@ function buildFontShorthand(
   sizePx: number,
   family: string
 ): string {
-  // Quote the family so multi-word names ("Times New Roman") still parse.
   return `${style} ${weight} ${sizePx}px "${family}"`;
 }
 
-/**
- * Compute the rendered font size after auto-shrink to fit `maxWidthPct`.
- * Returns null when the text is empty/whitespace and should not be drawn.
- */
 export function measureTextElement(
   ctx: CanvasRenderingContext2D,
   text: string,
   element: TextElement,
-  canvasWidth: number
+  canvasWidth: number,
+  scale = 1
 ): ResolvedText | null {
   if (!text || !text.trim()) return null;
   const fontStyle = element.fontStyle ?? "normal";
   const textDecoration = element.textDecoration ?? "none";
 
   const maxWidth = Math.max(0, element.maxWidthPct * canvasWidth);
-  let fontSize = element.fontSize;
+  let fontSize = element.fontSize * scale;
   ctx.font = buildFontShorthand(fontStyle, element.fontWeight, fontSize, element.fontFamily);
   let measured = ctx.measureText(text).width;
 
@@ -98,26 +102,20 @@ export function measureTextElement(
     measured = ctx.measureText(text).width;
   }
 
-  // Approximate text box height. Canvas does not expose line-height; use a 1.2 factor
-  // matching typical CSS defaults for selection bbox sizing.
   const underlineExtra = textDecoration === "underline" ? Math.max(2, fontSize * 0.12) : 0;
   const height = fontSize * 1.2 + underlineExtra;
   return { text, fontSize, width: measured, height };
 }
 
-/**
- * Draw a single text element on the canvas, center-anchored on its (x, y) percentage.
- * Auto-shrinks the font to fit `maxWidthPct`. Wrap calls in save/restore so the
- * `textAlign`/`textBaseline` settings do not leak to other draws.
- */
 export function drawTextElement(
   ctx: CanvasRenderingContext2D,
   text: string,
   element: TextElement,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
+  scale = 1
 ): void {
-  const measurement = measureTextElement(ctx, text, element, canvasWidth);
+  const measurement = measureTextElement(ctx, text, element, canvasWidth, scale);
   if (!measurement) return;
   const fontStyle = element.fontStyle ?? "normal";
   const textDecoration = element.textDecoration ?? "none";
@@ -149,59 +147,60 @@ export function drawTextElement(
   ctx.restore();
 }
 
-export type DrawCertificateOptions = AttendeeDrawContext;
-
-/**
- * Render a full certificate (template + every text element) into the given canvas.
- * The canvas is sized to the natural template dimensions before drawing.
- */
-export function drawCertificateToCanvas(
+export async function renderToCanvas(
   canvas: HTMLCanvasElement,
   templateImg: HTMLImageElement,
-  elements: TextElement[],
-  options: DrawCertificateOptions = {}
-): void {
+  textElements: TextElement[],
+  proofLinkElements: ProofLinkElement[],
+  issuer: string,
+  options: RecordDrawContext = {},
+  proofUrl?: string,
+  scale = 1
+): Promise<void> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not get canvas 2d context");
 
-  const w = templateImg.naturalWidth || templateImg.width;
-  const h = templateImg.naturalHeight || templateImg.height;
+  const w = Math.round((templateImg.naturalWidth || templateImg.width) * scale);
+  const h = Math.round((templateImg.naturalHeight || templateImg.height) * scale);
   if (canvas.width !== w) canvas.width = w;
   if (canvas.height !== h) canvas.height = h;
 
   ctx.clearRect(0, 0, w, h);
   ctx.drawImage(templateImg, 0, 0, w, h);
 
-  for (const element of elements) {
+  for (const element of textElements) {
     const text = resolveElementText(element, options);
-    drawTextElement(ctx, text, element, w, h);
+    drawTextElement(ctx, text, element, w, h, scale);
+  }
+
+  for (const el of proofLinkElements) {
+    const url = proofUrl || "https://ditto.example/proof/PLACEHOLDER";
+    await drawProofLinkElement(ctx, { proofLinkElement: el, canvasWidth: w, canvasHeight: h, proofUrl: url });
   }
 }
 
 export type ElementBBox = {
   id: string;
-  type: TextElement["type"];
-  /** Bounding box left edge in canvas pixels. */
+  type: "dynamic-text" | "static" | "name" | "proof-link" | "qr";
   left: number;
-  /** Bounding box top edge in canvas pixels. */
   top: number;
   width: number;
   height: number;
 };
 
-/**
- * Compute the post-shrink bounding boxes for each element. Used by the designer
- * to render transparent hit-test overlays over the canvas.
- */
 export function measureElementBBoxes(
   ctx: CanvasRenderingContext2D,
-  elements: TextElement[],
+  textElements: TextElement[],
+  proofLinkElements: ProofLinkElement[],
   canvasWidth: number,
   canvasHeight: number,
-  options: DrawCertificateOptions = {}
+  options: RecordDrawContext = {},
+  proofUrl?: string
 ): ElementBBox[] {
   const out: ElementBBox[] = [];
-  for (const element of elements) {
+  const sizingUrl = proofUrl ?? buildProofSizingPlaceholderUrl();
+
+  for (const element of textElements) {
     const text = resolveElementText(element, options);
     const m = measureTextElement(ctx, text, element, canvasWidth);
     if (!m) continue;
@@ -216,6 +215,21 @@ export function measureElementBBoxes(
       height: m.height,
     });
   }
+
+  for (const el of proofLinkElements) {
+    const { renderSize } = computeProofLinkRenderDimensions(el.sizePct, canvasWidth, sizingUrl);
+    const cx = el.x * canvasWidth;
+    const cy = el.y * canvasHeight;
+    out.push({
+      id: el.id,
+      type: el.type,
+      left: cx - renderSize / 2,
+      top: cy - renderSize / 2,
+      width: renderSize,
+      height: renderSize,
+    });
+  }
+
   return out;
 }
 

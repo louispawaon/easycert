@@ -1,15 +1,16 @@
-import type { AppStateRecord } from "./easycert-db";
+import type { AppStateRecord } from "./ditto-db";
 
 export function isRestorableProject(row: AppStateRecord | undefined | null): boolean {
   if (!row) return false;
-  if (row.certificateImageUrl) return true;
+  if (row.templateImageUrl) return true;
+  if (row.designElements && row.designElements.length > 0) return true;
   if (row.textElements && row.textElements.length > 0) return true;
   if (row.customFonts && Object.keys(row.customFonts).length > 0) return true;
-  if (row.attendeeListText !== undefined) {
-    if (row.attendeeListText === "") return true;
-    if (row.attendeeListText.trim().length > 0) return true;
+  if (row.recordListText !== undefined) {
+    if (row.recordListText === "") return true;
+    if (row.recordListText.trim().length > 0) return true;
   }
-  if (row.attendeeTable?.rows.some((cells) => cells.some((c) => c.trim().length > 0))) {
+  if (row.recordTable?.rows.some((cells) => cells.some((c) => c.trim().length > 0))) {
     return true;
   }
   return false;

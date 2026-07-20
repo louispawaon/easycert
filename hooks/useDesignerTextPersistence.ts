@@ -3,28 +3,39 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/useToast";
-import { easyCertDb } from "@/lib/db/easycert-db";
-import { saveTextElements } from "@/lib/db/app-state";
-import type { TextElement } from "@/types/types";
+import { dittoDb } from "@/lib/db/ditto-db";
+import { saveDesignElements } from "@/lib/db/app-state";
+import type { DesignElement } from "@/types/types";
+import { isProofLinkElement } from "@/types/types";
+import { normalizeProofLinkSizePct } from "@/lib/canvas/proof-link-render";
 
-export function useDesignerTextPersistence() {
+function normalizeLoadedDesignElements(elements: DesignElement[]): DesignElement[] {
+  return elements.map((el) => {
+    if (!isProofLinkElement(el)) return el;
+    const sizePct = normalizeProofLinkSizePct(el.sizePct);
+    return sizePct === el.sizePct ? el : { ...el, sizePct };
+  });
+}
+
+export function useDesignerElementPersistence() {
   const { toast } = useToast();
-  const [textElements, setTextElements] = useState<TextElement[]>([]);
-  const appStateRow = useLiveQuery(() => easyCertDb.appState.get("default"));
+  const [designElements, setDesignElements] = useState<DesignElement[]>([]);
+  const appStateRow = useLiveQuery(() => dittoDb.appState.get("default"));
   const lastSyncedSavedAtRef = useRef<number | null>(null);
-  const skipNextTextElementsPersist = useRef(true);
+  const skipNextPersist = useRef(true);
   const debounceTimerRef = useRef<number | null>(null);
-  const dirtyTextRef = useRef(false);
-  const textElementsRef = useRef<TextElement[]>(textElements);
-  textElementsRef.current = textElements;
+  const dirtyRef = useRef(false);
+  const saveGenerationRef = useRef(0);
+  const elementsRef = useRef<DesignElement[]>(designElements);
+  elementsRef.current = designElements;
 
   const persistError = useCallback(
     (err: unknown, context: string) => {
-      dirtyTextRef.current = true;
-      console.error("[useDesignerTextPersistence]", context, err);
+      dirtyRef.current = true;
+      console.error("[useDesignerElementPersistence]", context, err);
       toast({
-        title: "Couldn’t save design",
-        description: "Your certificate layout may not be saved. Keep this tab open and try editing again.",
+        title: "Couldn't save design",
+        description: "Your design layout may not be saved. Keep this tab open and try editing again.",
         variant: "destructive",
       });
     },
@@ -35,25 +46,31 @@ export function useDesignerTextPersistence() {
     if (appStateRow === undefined) return;
     const rowSavedAt = appStateRow.savedAt ?? null;
     if (lastSyncedSavedAtRef.current === rowSavedAt) return;
-    if (dirtyTextRef.current) return;
+    if (dirtyRef.current) return;
     lastSyncedSavedAtRef.current = rowSavedAt;
-    setTextElements(appStateRow.textElements ?? []);
-    skipNextTextElementsPersist.current = true;
+    setDesignElements(
+      normalizeLoadedDesignElements(appStateRow.designElements ?? appStateRow.textElements ?? [])
+    );
+    skipNextPersist.current = true;
   }, [appStateRow]);
-  
+
   useEffect(() => {
     if (appStateRow === undefined) return;
-    if (skipNextTextElementsPersist.current) {
-      skipNextTextElementsPersist.current = false;
+    if (skipNextPersist.current) {
+      skipNextPersist.current = false;
       return;
     }
-    dirtyTextRef.current = true;
+    dirtyRef.current = true;
+    saveGenerationRef.current += 1;
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = window.setTimeout(() => {
       debounceTimerRef.current = null;
-      void saveTextElements(textElementsRef.current)
+      const generationAtSave = saveGenerationRef.current;
+      void saveDesignElements(elementsRef.current)
         .then(() => {
-          dirtyTextRef.current = false;
+          if (saveGenerationRef.current === generationAtSave) {
+            dirtyRef.current = false;
+          }
         })
         .catch((err: unknown) => persistError(err, "debounced-save"));
     }, 400);
@@ -63,19 +80,22 @@ export function useDesignerTextPersistence() {
         debounceTimerRef.current = null;
       }
     };
-  }, [textElements, persistError]);
+  }, [designElements, persistError]);
 
   useEffect(() => {
     const flush = () => {
       if (document.visibilityState !== "hidden") return;
-      if (!dirtyTextRef.current) return;
+      if (!dirtyRef.current) return;
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
       }
-      void saveTextElements(textElementsRef.current)
+      const generationAtSave = saveGenerationRef.current;
+      void saveDesignElements(elementsRef.current)
         .then(() => {
-          dirtyTextRef.current = false;
+          if (saveGenerationRef.current === generationAtSave) {
+            dirtyRef.current = false;
+          }
         })
         .catch((err: unknown) => persistError(err, "visibility-flush"));
     };
@@ -87,5 +107,5 @@ export function useDesignerTextPersistence() {
     };
   }, [persistError]);
 
-  return { textElements, setTextElements };
+  return { designElements, setDesignElements };
 }

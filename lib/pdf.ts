@@ -2,39 +2,46 @@
 
 import { resolvePageDimensions, isEdgeToEdge, type PageSizeId } from "@/lib/page-size";
 
+export type ImageDimensions = { width: number; height: number };
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Failed to decode certificate image"));
+    img.onerror = () => reject(new Error("Failed to decode output image"));
     img.src = src;
   });
 }
 
 export type GeneratePDFOptions = {
-  /** Selected page-size preset. Defaults to `auto` (edge-to-edge per template). */
   pageSize?: PageSizeId;
+  sourceImageDimensions?: ImageDimensions;
 };
 
 /**
- * Render the supplied certificate PNGs into a single PDF.
+ * Render the supplied output PNGs into a single PDF.
  *
- * In `auto` mode each page is sized to the certificate's native aspect, so the
+ * In `auto` mode each page is sized to the template's native aspect, so the
  * image fills the page exactly with no whitespace. In any fixed preset the
  * image is contain-fit centered on the chosen paper size, which preserves the
- * cert's aspect ratio and may introduce letterbox bands.
+ * output's aspect ratio and may introduce letterbox bands.
  */
 export async function generatePDF(
-  certificates: string[],
+  images: string[],
   filename: string,
   options: GeneratePDFOptions = {}
-) {
-  if (certificates.length === 0) return;
+): Promise<Blob> {
+  if (images.length === 0) return new Blob([], { type: "application/pdf" });
   const pageSize: PageSizeId = options.pageSize ?? "auto";
+  const sourceDims = options.sourceImageDimensions;
   const { jsPDF } = await import("jspdf");
 
-  const firstImg = await loadImage(certificates[0]);
-  const firstDims = resolvePageDimensions(pageSize, firstImg.width, firstImg.height);
+  const firstImg = await loadImage(images[0]);
+  const firstDims = resolvePageDimensions(
+    pageSize,
+    sourceDims ? sourceDims.width : firstImg.width,
+    sourceDims ? sourceDims.height : firstImg.height
+  );
 
   const pdf = new jsPDF({
     orientation: firstDims.widthMm > firstDims.heightMm ? "landscape" : "portrait",
@@ -44,9 +51,13 @@ export async function generatePDF(
     compress: true,
   });
 
-  for (let i = 0; i < certificates.length; i++) {
-    const img = i === 0 ? firstImg : await loadImage(certificates[i]);
-    const dims = resolvePageDimensions(pageSize, img.width, img.height);
+  for (let i = 0; i < images.length; i++) {
+    const img = i === 0 ? firstImg : await loadImage(images[i]);
+    const dims = resolvePageDimensions(
+      pageSize,
+      sourceDims ? sourceDims.width : img.width,
+      sourceDims ? sourceDims.height : img.height
+    );
 
     if (i > 0) {
       pdf.addPage(
@@ -82,5 +93,5 @@ export async function generatePDF(
     pdf.addImage(img, "JPEG", x, y, width, height, undefined, "FAST");
   }
 
-  pdf.save(filename);
+  return pdf.output("blob");
 }
