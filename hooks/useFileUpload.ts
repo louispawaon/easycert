@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/useToast";
 import { dittoDb, type RecordEntryTab, type RecordManualMode, type RecordTable } from "@/lib/db/ditto-db";
@@ -29,15 +29,18 @@ export function useFileUpload() {
   const [recordManualMode, setRecordManualMode] = useState<RecordManualMode>("simple");
   const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const syncedRef = useRef(false);
 
   useEffect(() => {
     if (row === undefined) return;
+    if (syncedRef.current) return;
+    syncedRef.current = true;
     if (row.recordTable) {
       setRecordListText(recordsToSimpleList(row.recordTable));
       return;
     }
     setRecordListText(row.recordListText ?? "");
-  }, [row?.recordListText, row?.recordTable]);
+  }, [row]);
 
   useEffect(() => {
     if (row?.recordEntryTab === "upload" || row?.recordEntryTab === "manual") {
@@ -228,7 +231,6 @@ export function useFileUpload() {
   const handleManualSimpleChange = useCallback((value: string) => {
     setRecordListText(value);
     const table = { headers: ["Value"], rows: value.split("\n").map((l) => [l.trim()]) };
-    void saveRecordListText(value);
     void saveRecordTable(table, value);
   }, []);
 
