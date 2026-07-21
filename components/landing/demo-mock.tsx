@@ -40,7 +40,7 @@ type DemoBrowserChromeProps = {
 };
 
 export function DemoBrowserChrome({
-  url = "ditto.project1of1/generate/annual-training-2026",
+  url = "ditto.project1of1.com/generate",
   children,
   className,
 }: DemoBrowserChromeProps) {
