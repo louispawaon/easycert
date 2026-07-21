@@ -94,13 +94,13 @@ export function createStaticElement(): TextElement {
   };
 }
 
-export function createProofLinkElement(urlTemplate: string): ProofLinkElement {
+export function createProofLinkElement(urlTemplate: string, sizePct?: number): ProofLinkElement {
   return {
     id: crypto.randomUUID(),
     type: 'proof-link',
     x: 0.85,
     y: 0.15,
-    sizePct: PROOF_LINK_DEFAULT_SIZE_PCT,
+    sizePct: sizePct ?? PROOF_LINK_DEFAULT_SIZE_PCT,
     color: '#000000',
     bgColor: '#ffffff',
     transparentBg: false,

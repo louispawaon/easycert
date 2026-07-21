@@ -12,9 +12,12 @@ import { normalizeHexColor } from "@/lib/utils";
 import { buildProofSizingPlaceholderUrl } from "@/lib/proof/url";
 import {
   computeProofLinkRenderDimensions,
-  MIN_PROOF_LINK_RENDER_PX,
-  PROOF_LINK_DEFAULT_SIZE_PCT,
+  computeRecommendedProofLinkSizePct,
+  computeMinScannableRenderPx,
+  isProofLinkBelowRecommendedSize,
   PROOF_LINK_REFERENCE_CANVAS_WIDTH,
+  PROOF_LINK_SLIDER_MIN_SIZE_PCT,
+  PROOF_LINK_SLIDER_MAX_SIZE_PCT,
 } from "@/lib/canvas/proof-link-render";
 
 interface ProofLinkElementEditorProps {
@@ -23,6 +26,7 @@ interface ProofLinkElementEditorProps {
   onRemove: () => void;
   issuer: string;
   onIssuerChange: (value: string) => void;
+  canvasWidth: number;
 }
 
 function clampPct(value: number, min = 0, max = 1): number {
@@ -40,16 +44,28 @@ export function ProofLinkElementEditor({
   onRemove,
   issuer,
   onIssuerChange,
+  canvasWidth,
 }: ProofLinkElementEditorProps) {
   const xPctDisplay = pctToDisplay(element.x);
   const yPctDisplay = pctToDisplay(element.y);
   const sizingUrl = buildProofSizingPlaceholderUrl();
+  const effectiveCanvasWidth =
+    canvasWidth > 0 ? canvasWidth : PROOF_LINK_REFERENCE_CANVAS_WIDTH;
+  const recommendedSizePct = computeRecommendedProofLinkSizePct(canvasWidth, sizingUrl);
+  const recommendedSizePctDisplay = Math.round(recommendedSizePct * 100);
+  const recommendedRenderPx = computeMinScannableRenderPx(sizingUrl);
+  const sliderMin = Math.round(PROOF_LINK_SLIDER_MIN_SIZE_PCT * 100);
+  const sliderMax = Math.round(PROOF_LINK_SLIDER_MAX_SIZE_PCT * 100);
   const renderDimensions = computeProofLinkRenderDimensions(
     element.sizePct,
-    PROOF_LINK_REFERENCE_CANVAS_WIDTH,
+    effectiveCanvasWidth,
     sizingUrl
   );
-  const minSizePct = Math.round(PROOF_LINK_DEFAULT_SIZE_PCT * 100);
+  const belowRecommended = isProofLinkBelowRecommendedSize(
+    element.sizePct,
+    canvasWidth,
+    sizingUrl
+  );
 
   return (
     <div className="min-w-0 space-y-4">
@@ -124,24 +140,33 @@ export function ProofLinkElementEditor({
         <div className="flex justify-between">
           <Label htmlFor="proof-link-size" className="leading-snug">Size</Label>
           <span className="text-sm text-muted-foreground">
-            {Math.max(minSizePct, Math.round(element.sizePct * 100))}%
+            {Math.round(element.sizePct * 100)}%
           </span>
         </div>
         <Slider
           id="proof-link-size"
-          min={minSizePct}
-          max={30}
+          min={sliderMin}
+          max={sliderMax}
           step={1}
-          value={[Math.max(minSizePct, Math.round(element.sizePct * 100))]}
+          value={[Math.max(sliderMin, Math.min(sliderMax, Math.round(element.sizePct * 100)))]}
           onValueChange={(value) =>
-            onUpdate("sizePct", clampPct(value[0] / 100, PROOF_LINK_DEFAULT_SIZE_PCT, 0.3))
+            onUpdate(
+              "sizePct",
+              clampPct(value[0] / 100, PROOF_LINK_SLIDER_MIN_SIZE_PCT, PROOF_LINK_SLIDER_MAX_SIZE_PCT)
+            )
           }
         />
         <p className="text-xs text-muted-foreground">
-          Minimum {MIN_PROOF_LINK_RENDER_PX}px. Roughly {renderDimensions.renderSize}px on a{" "}
-          {PROOF_LINK_REFERENCE_CANVAS_WIDTH}px-wide template. Use a solid light background for best
-          contrast.
+          Renders at roughly {renderDimensions.renderSize}px on your {effectiveCanvasWidth}px-wide
+          template. Recommended for scanning: {recommendedSizePctDisplay}% (~{recommendedRenderPx}
+          px). Use a solid light background for best contrast.
         </p>
+        {belowRecommended ? (
+          <p className="text-xs text-amber-600 dark:text-amber-500">
+            This size may be hard to scan. Increase toward {recommendedSizePctDisplay}% if phones
+            struggle to read it.
+          </p>
+        ) : null}
       </div>
 
       <div className="min-w-0 space-y-2 border-t pt-4">

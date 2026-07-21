@@ -11,7 +11,8 @@ import {
   isProofLinkElement,
 } from "@/types/types";
 import type { RecordDrawContext } from "@/lib/canvas/draw-text-element";
-import { buildProofLinkUrlTemplate } from "@/lib/proof/url";
+import { buildProofLinkUrlTemplate, buildProofSizingPlaceholderUrl } from "@/lib/proof/url";
+import { computeRecommendedProofLinkSizePct } from "@/lib/canvas/proof-link-render";
 import { saveIssuer, saveOutputSettings, clearLastGenerationReport } from "@/lib/db/app-state";
 import {
   DEFAULT_OUTPUT_SETTINGS,
@@ -280,10 +281,14 @@ export function useDesignerController(workspaceKey = 0) {
   );
 
   const handleAddProofLinkElement = useCallback(() => {
-    const newElement = createProofLinkElement(buildProofLinkUrlTemplate());
+    const defaultSizePct = computeRecommendedProofLinkSizePct(
+      imageDimensions.width,
+      buildProofSizingPlaceholderUrl()
+    );
+    const newElement = createProofLinkElement(buildProofLinkUrlTemplate(), defaultSizePct);
     setDesignElements((prev) => [...prev, newElement]);
     setSelectedElement(newElement.id);
-  }, [setDesignElements, setSelectedElement]);
+  }, [setDesignElements, setSelectedElement, imageDimensions.width]);
 
   const loadPreset = useCallback(
     (properties: Partial<TextProperties>) => {

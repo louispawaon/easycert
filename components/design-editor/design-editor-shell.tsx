@@ -32,6 +32,7 @@ type DesignEditorShellProps = Pick<
   | "recordCsvHeaders"
   | "issuer"
   | "handleIssuerChange"
+  | "imageDimensions"
   | "auditReport"
   | "isAuditing"
 > & {
@@ -54,6 +55,7 @@ export function DesignEditorShell({
   recordCsvHeaders,
   issuer,
   handleIssuerChange,
+  imageDimensions,
   auditReport,
   isAuditing,
   className,
@@ -72,7 +74,7 @@ export function DesignEditorShell({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <aside
           id="ditto-onboarding-design-sidebar"
-          className="min-h-0 min-w-0 max-h-[38vh] shrink-0 overflow-y-auto border-b p-4 lg:w-[280px] lg:max-h-none lg:border-r lg:border-b-0"
+          className="min-h-0 min-w-0 max-h-[38vh] shrink-0 overflow-y-auto border-b p-4 lg:w-70 lg:max-h-none lg:border-r lg:border-b-0"
         >
           <div id="ditto-onboarding-design-controls">
             <DesignControls
@@ -173,7 +175,7 @@ export function DesignEditorShell({
 
         <aside
           id="ditto-onboarding-design-properties"
-          className="min-h-0 min-w-0 max-h-[38vh] shrink-0 overflow-y-auto border-t p-4 lg:w-[280px] lg:max-h-none lg:border-l lg:border-t-0"
+          className="min-h-0 min-w-0 max-h-[38vh] shrink-0 overflow-y-auto border-t p-4 lg:w-70 lg:max-h-none lg:border-l lg:border-t-0"
         >
           {isProofLinkSelected && selectedElementObj ? (
             <ProofLinkElementEditor
@@ -182,6 +184,7 @@ export function DesignEditorShell({
               onRemove={handleElementRemove}
               issuer={issuer}
               onIssuerChange={handleIssuerChange}
+              canvasWidth={imageDimensions.width}
             />
           ) : selectedTextElement ? (
             <TextElementEditor
