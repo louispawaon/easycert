@@ -18,7 +18,7 @@ export function buildProofLinkUrlTemplate(): string {
 /** Representative URL for proof link layout sizing (matches typical issued token length). */
 export function buildProofSizingPlaceholderUrl(): string {
   const base = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_SITE_URL) ?? 'http://localhost:3000';
-  const sampleToken =
-    'AavN7xI0VniQq83vEjRWeJBmZpmACEpvaG4gRG9lD1Rlc3QgVW5pdmVyc2l0eQAAAAAAAAAAAAAAAAAAAAA';
+  // Low-entropy stand-in only — not a real proof token. Length ≈ compact tokens for "Name"/"Issuer".
+  const sampleToken = "x".repeat(83);
   return `${base}/v/${sampleToken}`;
 }
