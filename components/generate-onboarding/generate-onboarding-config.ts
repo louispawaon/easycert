@@ -13,63 +13,63 @@ export const GENERATE_ONBOARDING_SUBSTEPS: OnboardingSubstep[] = [
   {
     id: "upload-template",
     wizardStep: 0,
-    targetElementId: "easycert-onboarding-certificate-upload",
-    title: "Add your certificate picture",
+    targetElementId: "ditto-onboarding-template-upload",
+    title: "Add your design template",
     description:
-      "Upload an image of your blank certificate (PNG or JPG works well). This picture is the background for every person’s certificate.",
+      "Upload an image of your blank design (PNG or JPG works well). This picture is the background for every personalized output.",
   },
   {
-    id: "upload-attendees",
+    id: "upload-records",
     wizardStep: 0,
-    targetElementId: "easycert-onboarding-attendee-upload",
-    title: "Add names or CSV data",
+    targetElementId: "ditto-onboarding-record-upload",
+    title: "Add records or CSV data",
     description:
-      "Paste one name per line, upload a TXT or JSON list, or upload a CSV with a header row. With multiple columns you can choose which fields appear on certificates in the design step.",
+      "Paste one value per line, upload a TXT or JSON list, or upload a CSV with a header row. With multiple columns you can choose which fields appear on your outputs in the design step.",
   },
   {
     id: "upload-next",
     wizardStep: 0,
-    targetElementId: "easycert-onboarding-wizard-nav",
+    targetElementId: "ditto-onboarding-wizard-nav",
     title: "Move on when both are ready",
     description:
-      "When your picture and name list are in place, press Next to go to the design step. You can always come back with the Back button.",
+      "When your template and record list are in place, press Next to go to the design step. You can always come back with the Back button.",
   },
   {
     id: "design-canvas",
     wizardStep: 1,
-    targetElementId: "easycert-onboarding-design-canvas",
-    title: "Place text on the certificate",
+    targetElementId: "ditto-onboarding-design-canvas",
+    title: "Place text on the design",
     description:
-      "Use the buttons on the right to add a name field or other text, then click on the picture where you want it. Drag the text to adjust position.",
+      "Use the buttons on the left to add a dynamic text field or other text, then click on the picture where you want it. Drag the text to adjust position.",
   },
   {
     id: "design-controls",
     wizardStep: 1,
-    targetElementId: "easycert-onboarding-design-controls",
+    targetElementId: "ditto-onboarding-design-controls",
     title: "Choose what to add",
     description:
-      "Pick “Insert Field from CSV” to choose which column you place next, or Insert Attendee Name when you’re only using simple lines or a single CSV column.",
+      "Pick \"Insert Field from CSV\" to choose which column you place next, or Insert Record Name when you're only using simple lines or a single CSV column.",
   },
   {
-    id: "design-sidebar",
+    id: "design-properties",
     wizardStep: 1,
-    targetElementId: "easycert-onboarding-design-sidebar",
+    targetElementId: "ditto-onboarding-design-properties",
     title: "Fine-tune the look",
     description:
-      "Click a text box on the certificate to open styling options here—fonts, size, color, and more. Use the arrows above to preview different names.",
+      "Click a text box on the design to open styling options here—fonts, size, color, and more. Use the arrows above to preview different names.",
   },
   {
     id: "generate-summary",
     wizardStep: 2,
-    targetElementId: "easycert-onboarding-generate-summary",
+    targetElementId: "ditto-onboarding-generate-summary",
     title: "Quick checklist",
     description:
-      "This area shows whether your template, names, and name fields are ready. All set means you can download everyone’s files.",
+      "This area shows whether your template, records, and dynamic text fields are ready. All set means you can download everyone's files.",
   },
   {
     id: "generate-options",
     wizardStep: 2,
-    targetElementId: "easycert-onboarding-generate-options",
+    targetElementId: "ditto-onboarding-generate-options",
     title: "File name and PDF page size",
     description:
       "Pick a base file name for downloads. For PDFs, choose a page size that matches how you will print or share.",
@@ -77,10 +77,10 @@ export const GENERATE_ONBOARDING_SUBSTEPS: OnboardingSubstep[] = [
   {
     id: "generate-export",
     wizardStep: 2,
-    targetElementId: "easycert-onboarding-generate-export",
-    title: "Create all certificates",
+    targetElementId: "ditto-onboarding-generate-export",
+    title: "Create all outputs",
     description:
-      "PNG/ZIP gives you one image per person. PDF puts many certificates in one file. Large lists may take a minute—stay on this page until it finishes.",
+      "PNG/ZIP gives you one image per person. PDF puts many outputs in one file. Large lists may take a minute—stay on this page until it finishes.",
   },
 ];
 

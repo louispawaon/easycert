@@ -1,27 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { easyCertDb } from "@/lib/db/easycert-db";
+import { dittoDb } from "@/lib/db/ditto-db";
 import { formatSavedAtLabel } from "@/lib/db/session-utils";
 
 export function AutosaveStatus() {
-  const row = useLiveQuery(() => easyCertDb.appState.get("default"));
-  const [tick, setTick] = useState(0);
+  const row = useLiveQuery(() => dittoDb.appState.get("default"));
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     const id = window.setInterval(() => setTick((t) => t + 1), 30_000);
     return () => window.clearInterval(id);
   }, []);
 
-  const label = useMemo(
-    () => formatSavedAtLabel(row?.savedAt),
-    [row?.savedAt, tick]
-  );
+  const label = formatSavedAtLabel(row?.savedAt);
 
   if (!label) return null;
 
   return (
-    <p className="text-xs text-muted-foreground tabular-nums pt-1">{label}</p>
+    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{label}</span>
   );
 }

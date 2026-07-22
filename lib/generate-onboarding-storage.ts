@@ -1,4 +1,4 @@
-export const GENERATE_ONBOARDING_STORAGE_KEY = "easycert_generate_onboarding_v1" as const;
+export const GENERATE_ONBOARDING_STORAGE_KEY = "ditto_generate_onboarding_v1" as const;
 
 export type GenerateOnboardingStatus = "done" | "skipped";
 

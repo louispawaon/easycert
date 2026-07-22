@@ -1,16 +1,9 @@
 import { Fragment } from "react";
-import { Archivo } from "next/font/google";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-const archivoWizard = Archivo({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-generate-wizard",
-});
-
 const STEPS = [
-  { title: "Upload", subtitle: "Template & Attendees" },
+  { title: "Upload", subtitle: "Template & Records" },
   { title: "Design", subtitle: "Place Text Elements" },
   { title: "Generate", subtitle: "Review & Export" },
 ] as const;
@@ -19,6 +12,7 @@ export type GenerateWizardStepIndex = 0 | 1 | 2;
 
 export interface GenerateStepWizardProps {
   currentStepIndex: GenerateWizardStepIndex;
+  variant?: "default" | "compact";
   className?: string;
 }
 
@@ -46,21 +40,42 @@ function connectorClasses(state: StepVisualState): string {
   }
 }
 
-export function GenerateStepWizard({
+function badgeClasses(status: StepVisualState, compact: boolean): string {
+  return cn(
+    "flex shrink-0 items-center justify-center rounded-full font-bold tabular-nums",
+    compact
+      ? "size-7 text-xs lg:size-8 lg:text-sm"
+      : "size-(--wizard-badge-size) text-xl sm:text-5xl",
+    status === "done" && "bg-success/15 text-success [&_svg]:text-success",
+    status === "current" && "bg-foreground text-background",
+    status === "next" && "bg-muted text-muted-foreground"
+  );
+}
+
+function titleClasses(status: StepVisualState, compact: boolean): string {
+  return cn(
+    compact
+      ? "hidden truncate text-sm font-bold leading-none lg:inline"
+      : "wrap-break-word text-base font-bold leading-tight sm:text-lg md:text-xl lg:text-2xl",
+    status === "done" && "text-success",
+    status === "current" && "text-foreground",
+    status === "next" && "text-muted-foreground"
+  );
+}
+
+function GenerateStepWizardDefault({
   currentStepIndex,
   className,
 }: GenerateStepWizardProps) {
   return (
     <nav
-      aria-label="Certificate generation steps"
+      aria-label="Design personalization steps"
       className={cn(
-        archivoWizard.variable,
-        "[font-family:var(--font-generate-wizard),system-ui,sans-serif]",
+        "font-heading",
         "[--wizard-badge-size:2.75rem] sm:[--wizard-badge-size:4.5rem]",
         className
       )}
     >
-      {/* Two-row grid: row 1 = circles + segments only between pairs; row 2 = labels under circles */}
       <div
         className="grid w-full min-w-0 gap-x-3 sm:gap-x-4"
         style={{
@@ -77,15 +92,7 @@ export function GenerateStepWizard({
                 className="flex items-center justify-center self-center"
                 style={{ gridColumn: badgeCol, gridRow: 1, height: "var(--wizard-badge-size)" }}
               >
-                <span
-                  className={cn(
-                    "flex size-(--wizard-badge-size) shrink-0 items-center justify-center rounded-full text-xl font-black tabular-nums sm:text-5xl",
-                    status === "done" &&
-                      "bg-success/15 text-success [&_svg]:text-success",
-                    status === "current" && "bg-foreground text-background",
-                    status === "next" && "bg-muted text-muted-foreground"
-                  )}
-                >
+                <span className={badgeClasses(status, false)}>
                   {status === "done" ? (
                     <Check className="size-5 stroke-[2.5] sm:size-6" aria-hidden />
                   ) : (
@@ -98,15 +105,7 @@ export function GenerateStepWizard({
                 className="mx-auto mt-3 max-w-44 min-w-0 px-1 text-center sm:mt-4 sm:max-w-none"
                 style={{ gridColumn: badgeCol, gridRow: 2 }}
               >
-                <p
-                  className={cn(
-                    "wrap-break-word text-base font-bold leading-tight sm:text-lg md:text-xl lg:text-2xl",
-                    status === "done" && "text-success",
-                    status === "current" && "text-foreground",
-                    status === "next" && "text-muted-foreground"
-                  )}
-                  aria-current={status === "current" ? "step" : undefined}
-                >
+                <p className={titleClasses(status, false)} aria-current={status === "current" ? "step" : undefined}>
                   {step.title}
                 </p>
                 <p
@@ -140,5 +139,80 @@ export function GenerateStepWizard({
         })}
       </div>
     </nav>
+  );
+}
+
+function GenerateStepWizardCompact({
+  currentStepIndex,
+  className,
+}: GenerateStepWizardProps) {
+  return (
+    <nav
+      aria-label="Design personalization steps"
+      className={cn(
+        "font-heading",
+        className
+      )}
+    >
+      <ol className="flex min-w-0 max-w-full items-center justify-center gap-1 lg:gap-2.5">
+        {STEPS.map((step, i) => {
+          const status = stepState(i, currentStepIndex);
+
+          return (
+            <Fragment key={step.title}>
+              <li
+                className="flex shrink-0 items-center gap-1 lg:min-w-0 lg:gap-2"
+                aria-current={status === "current" ? "step" : undefined}
+              >
+                <span className={badgeClasses(status, true)}>
+                  {status === "done" ? (
+                    <Check className="size-3.5 stroke-[2.5] lg:size-4" aria-hidden />
+                  ) : (
+                    <span>{i + 1}</span>
+                  )}
+                </span>
+                <span className={titleClasses(status, true)}>{step.title}</span>
+              </li>
+
+              {i < STEPS.length - 1 ? (
+                <li
+                  className="flex w-2 shrink-0 items-center lg:min-w-6 lg:max-w-12 lg:flex-1 lg:w-auto"
+                  aria-hidden
+                >
+                  <div
+                    className={cn(
+                      "h-0.5 w-full rounded-full lg:h-1",
+                      connectorClasses(stepState(i, currentStepIndex))
+                    )}
+                  />
+                </li>
+              ) : null}
+            </Fragment>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+export function GenerateStepWizard({
+  currentStepIndex,
+  variant = "default",
+  className,
+}: GenerateStepWizardProps) {
+  if (variant === "compact") {
+    return (
+      <GenerateStepWizardCompact
+        currentStepIndex={currentStepIndex}
+        className={className}
+      />
+    );
+  }
+
+  return (
+    <GenerateStepWizardDefault
+      currentStepIndex={currentStepIndex}
+      className={className}
+    />
   );
 }

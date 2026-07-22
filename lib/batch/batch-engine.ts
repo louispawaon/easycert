@@ -1,12 +1,23 @@
 import JSZip from "jszip";
-import type { TextElement, ImageDimensions } from "@/types/types";
+import type { TextElement, ProofLinkElement, ImageDimensions } from "@/types/types";
 import {
-  drawCertificateToCanvas,
-  type DrawCertificateOptions,
+  renderToCanvas,
+  type RecordDrawContext,
 } from "@/lib/canvas/draw-text-element";
 import { awaitFontsReady } from "@/lib/canvas/await-fonts";
 import { createReusableCanvas } from "@/lib/batch/canvas-pool";
 import { yieldToMain } from "@/lib/batch/yield";
+import { buildProofUrl } from "@/lib/proof/url";
+import { generatePDF } from "@/lib/pdf";
+import {
+  resolveFilenameForRecord,
+  containerStemForPattern,
+  type FilenameContext,
+} from "@/lib/output/filename-pattern";
+import type {
+  OutputSettings,
+  OutputFormat,
+} from "@/lib/output/output-settings";
 
 export type BatchPhase = "rendering" | "zipping" | "done" | "cancelled";
 
@@ -19,13 +30,13 @@ export type BatchProgress = {
 
 export type BatchOptions = {
   imageUrl: string;
-  /** One draw context per output certificate (CSV row + display line fallback). */
-  attendeeDrawOptions: DrawCertificateOptions[];
+  recordDrawOptions: RecordDrawContext[];
   textElements: TextElement[];
+  proofLinkElements: ProofLinkElement[];
+  issuer: string;
+  proofTokens?: string[];
   imageDimensions: ImageDimensions;
-  /** Prefix for each PNG inside the ZIP (`{prefix}_{sanitizedName}.png`). Omits path chars; defaults to `certificate` when unset. */
   pngFilenamePrefix?: string;
-  /** Number of certificates rendered between event-loop yields. Default: 5. */
   chunkSize?: number;
   onProgress?: (progress: BatchProgress) => void;
   signal?: AbortSignal;
@@ -45,7 +56,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     const img = new Image();
     img.crossOrigin = "Anonymous";
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Failed to load certificate template"));
+    img.onerror = () => reject(new Error("Failed to load design template"));
     img.src = url;
   });
 }
@@ -71,62 +82,96 @@ function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) throw new BatchAbortError();
 }
 
-/** Avoid duplicate ZIP entries when sanitized attendee names collide. */
-function uniqueZipPngFilename(used: Set<string>, stem: string): string {
-  let candidate = `${stem}.png`;
+function uniqueZipFilename(
+  used: Set<string>,
+  stem: string,
+  ext: string
+): string {
+  let candidate = `${stem}.${ext}`;
   let n = 2;
   while (used.has(candidate)) {
-    candidate = `${stem}-${n}.png`;
+    candidate = `${stem}-${n}.${ext}`;
     n++;
   }
   used.add(candidate);
   return candidate;
 }
 
-export function sanitizeOutputBasename(raw: string, emptyFallback = "Certificate"): string {
+function currentName(ctx: RecordDrawContext | undefined): string | undefined {
+  return (ctx?.recordLabel ?? ctx?.attendeeName) ?? undefined;
+}
+
+export function sanitizeOutputBasename(
+  raw: string,
+  emptyFallback = "Output"
+): string {
   const cleaned = raw.replace(/[\\/:*?"<>|\x00-\x1f]/g, "").trim();
   return cleaned.length > 0 ? cleaned : emptyFallback;
 }
 
-export function sanitizeAttendeeForFilename(name: string, index: number): string {
-  // Strip path separators and control chars; fall back to index if empty.
+export function sanitizeRecordForFilename(
+  name: string,
+  index: number
+): string {
   const cleaned = name.replace(/[\\/:*?"<>|\x00-\x1f]/g, "").trim();
-  return cleaned.length > 0 ? cleaned : `attendee_${index + 1}`;
+  return cleaned.length > 0 ? cleaned : `record_${index + 1}`;
 }
 
-/**
- * Validate inputs shared by every batch entry point. Throws with a single
- * caller-friendly message so the hook can surface it via toast.
- */
 function validateBatchInputs(opts: BatchOptions): void {
   if (!opts.imageUrl) {
-    throw new Error("No certificate template available");
+    throw new Error("No design template available");
   }
-  if (opts.attendeeDrawOptions.length === 0) {
-    throw new Error("No attendees provided");
+  if (opts.recordDrawOptions.length === 0) {
+    throw new Error("No records provided");
   }
-  if (!opts.textElements.some((el) => el.type === "name")) {
-    throw new Error("At least one name placeholder is required");
+  if (
+    !opts.textElements.some(
+      (el) => el.type === "dynamic-text" || el.type === "name"
+    )
+  ) {
+    throw new Error("At least one dynamic text element is required");
   }
 }
 
-/**
- * Render every attendee into a JSZip archive in chunks, reusing a single
- * canvas and a single decoded template image. The archive Blob is returned
- * to the caller for download.
- *
- * Memory characteristics:
- * - Peak in-memory PNG payload: 1 (current canvas blob) + cumulative ZIP
- *   contents inside JSZip, instead of N decoded data URLs.
- * - Template bitmap: decoded once.
- * - Canvas backing store: a single reusable canvas, disposed in `finally`.
- */
-export async function generateCertificatesBatch(
-  opts: BatchOptions
+function buildFilenameCtx(
+  drawCtx: RecordDrawContext,
+  i: number
+): FilenameContext {
+  return {
+    recordLabel: drawCtx.recordLabel,
+    record: drawCtx.record ?? null,
+    headers: drawCtx.headers ?? [],
+    index: i + 1,
+  };
+}
+
+function mimeForFormat(format: OutputFormat): string {
+  switch (format) {
+    case "webp":
+      return "image/webp";
+    default:
+      return "image/png";
+  }
+}
+
+function extForFormat(format: OutputFormat): string {
+  switch (format) {
+    case "webp":
+      return "webp";
+    default:
+      return "png";
+  }
+}
+
+async function generateRasterZip(
+  settings: OutputSettings,
+  opts: BatchOptions,
+  mimeType: string,
+  ext: string
 ): Promise<Blob> {
-  validateBatchInputs(opts);
   const chunkSize = Math.max(1, opts.chunkSize ?? DEFAULT_CHUNK_SIZE);
-  const total = opts.attendeeDrawOptions.length;
+  const total = opts.recordDrawOptions.length;
+  const scale = settings.scale;
   const { canvas, dispose } = createReusableCanvas();
 
   try {
@@ -143,24 +188,36 @@ export async function generateCertificatesBatch(
       current: 0,
       total,
       phase: "rendering",
-      currentName: opts.attendeeDrawOptions[0]?.attendeeName ?? undefined,
+      currentName: currentName(opts.recordDrawOptions[0]),
     });
 
     for (let i = 0; i < total; i++) {
       throwIfAborted(opts.signal);
 
-      const drawCtx = opts.attendeeDrawOptions[i];
-      drawCertificateToCanvas(canvas, templateImg, opts.textElements, drawCtx);
+      const drawCtx = opts.recordDrawOptions[i];
+      const proofUrl =
+        opts.proofLinkElements.length > 0 && opts.proofTokens
+          ? buildProofUrl(opts.proofTokens[i]!)
+          : undefined;
 
-      const blob = await canvasToBlob(canvas, "image/png", 0.92);
+      await renderToCanvas(
+        canvas,
+        templateImg,
+        opts.textElements,
+        opts.proofLinkElements,
+        opts.issuer,
+        drawCtx,
+        proofUrl,
+        scale
+      );
+
+      const blob = await canvasToBlob(canvas, mimeType, 0.92);
       const arrayBuffer = await blob.arrayBuffer();
-      const prefix =
-        opts.pngFilenamePrefix !== undefined
-          ? sanitizeOutputBasename(opts.pngFilenamePrefix, "certificate")
-          : "certificate";
-      const line = (drawCtx.attendeeName ?? "").trim();
-      const stem = `${prefix}_${sanitizeAttendeeForFilename(line, i)}`;
-      const filename = uniqueZipPngFilename(usedZipNames, stem);
+      const stem = resolveFilenameForRecord(
+        settings.filenamePattern,
+        buildFilenameCtx(drawCtx, i)
+      );
+      const filename = uniqueZipFilename(usedZipNames, stem, ext);
 
       zip.file(filename, arrayBuffer, {
         binary: true,
@@ -172,11 +229,9 @@ export async function generateCertificatesBatch(
         current: i + 1,
         total,
         phase: "rendering",
-        currentName: opts.attendeeDrawOptions[i + 1]?.attendeeName ?? undefined,
+        currentName: currentName(opts.recordDrawOptions[i + 1]),
       });
 
-      // Yield to the main thread between chunks so the browser can paint
-      // the new progress and process a pending cancel click.
       if ((i + 1) % chunkSize === 0 && i + 1 < total) {
         await yieldToMain();
       }
@@ -204,21 +259,15 @@ export async function generateCertificatesBatch(
   }
 }
 
-/**
- * Render every attendee into PNG data URLs for PDF generation.
- *
- * Same memory and yielding rules as `generateCertificatesBatch`, except the
- * caller is on the hook for the resulting strings -- expect ~3-5MB per
- * full-resolution certificate. PDF callers should either stream into jsPDF
- * page-by-page or accept the temporary peak.
- */
-export async function generateCertificateImagesBatch(
+async function renderPngDataUrls(
+  settings: OutputSettings,
   opts: BatchOptions
 ): Promise<string[]> {
-  validateBatchInputs(opts);
   const chunkSize = Math.max(1, opts.chunkSize ?? DEFAULT_CHUNK_SIZE);
-  const total = opts.attendeeDrawOptions.length;
+  const total = opts.recordDrawOptions.length;
+  const scale = settings.scale;
   const { canvas, dispose } = createReusableCanvas();
+  const dataUrls: string[] = [];
 
   try {
     await awaitFontsReady(opts.textElements);
@@ -227,20 +276,32 @@ export async function generateCertificateImagesBatch(
     const templateImg = await loadImage(opts.imageUrl);
     throwIfAborted(opts.signal);
 
-    const dataUrls: string[] = [];
-
     opts.onProgress?.({
       current: 0,
       total,
       phase: "rendering",
-      currentName: opts.attendeeDrawOptions[0]?.attendeeName ?? undefined,
+      currentName: currentName(opts.recordDrawOptions[0]),
     });
 
     for (let i = 0; i < total; i++) {
       throwIfAborted(opts.signal);
 
-      const drawCtx = opts.attendeeDrawOptions[i];
-      drawCertificateToCanvas(canvas, templateImg, opts.textElements, drawCtx);
+      const drawCtx = opts.recordDrawOptions[i];
+      const proofUrl =
+        opts.proofLinkElements.length > 0 && opts.proofTokens
+          ? buildProofUrl(opts.proofTokens[i]!)
+          : undefined;
+
+      await renderToCanvas(
+        canvas,
+        templateImg,
+        opts.textElements,
+        opts.proofLinkElements,
+        opts.issuer,
+        drawCtx,
+        proofUrl,
+        scale
+      );
 
       const dataUrl = canvas.toDataURL("image/png", 0.92);
       if (!dataUrl) throw new Error("Failed to generate image data URL");
@@ -250,7 +311,7 @@ export async function generateCertificateImagesBatch(
         current: i + 1,
         total,
         phase: "rendering",
-        currentName: opts.attendeeDrawOptions[i + 1]?.attendeeName ?? undefined,
+        currentName: currentName(opts.recordDrawOptions[i + 1]),
       });
 
       if ((i + 1) % chunkSize === 0 && i + 1 < total) {
@@ -270,3 +331,205 @@ export async function generateCertificateImagesBatch(
     dispose();
   }
 }
+
+async function generatePdfOutput(
+  settings: OutputSettings,
+  opts: BatchOptions
+): Promise<Blob> {
+  const dataUrls = await renderPngDataUrls(settings, opts);
+  if (opts.signal?.aborted) throw new BatchAbortError();
+
+  const stem = containerStemForPattern(settings.filenamePattern);
+  const filename = `${stem}.pdf`;
+
+  const sourceImageDimensions = {
+    width: opts.imageDimensions.width,
+    height: opts.imageDimensions.height,
+  };
+
+  return generatePDF(dataUrls, filename, {
+    pageSize: settings.pageSize,
+    sourceImageDimensions,
+  });
+}
+
+async function generateRasterWithPdf(
+  settings: OutputSettings,
+  opts: BatchOptions,
+  mimeType: string,
+  ext: string
+): Promise<Blob> {
+  const chunkSize = Math.max(1, opts.chunkSize ?? DEFAULT_CHUNK_SIZE);
+  const total = opts.recordDrawOptions.length;
+  const scale = settings.scale;
+  const { canvas, dispose } = createReusableCanvas();
+  const pngDataUrls: string[] = [];
+
+  try {
+    await awaitFontsReady(opts.textElements);
+    throwIfAborted(opts.signal);
+
+    const templateImg = await loadImage(opts.imageUrl);
+    throwIfAborted(opts.signal);
+
+    const zip = new JSZip();
+    const usedZipNames = new Set<string>();
+
+    opts.onProgress?.({
+      current: 0,
+      total,
+      phase: "rendering",
+      currentName: currentName(opts.recordDrawOptions[0]),
+    });
+
+    for (let i = 0; i < total; i++) {
+      throwIfAborted(opts.signal);
+
+      const drawCtx = opts.recordDrawOptions[i];
+      const proofUrl =
+        opts.proofLinkElements.length > 0 && opts.proofTokens
+          ? buildProofUrl(opts.proofTokens[i]!)
+          : undefined;
+
+      await renderToCanvas(
+        canvas,
+        templateImg,
+        opts.textElements,
+        opts.proofLinkElements,
+        opts.issuer,
+        drawCtx,
+        proofUrl,
+        scale
+      );
+
+      const rasterBlob = await canvasToBlob(canvas, mimeType, 0.92);
+      const arrayBuffer = await rasterBlob.arrayBuffer();
+      const stem = resolveFilenameForRecord(
+        settings.filenamePattern,
+        buildFilenameCtx(drawCtx, i)
+      );
+      const filename = uniqueZipFilename(usedZipNames, stem, ext);
+
+      zip.file(filename, arrayBuffer, {
+        binary: true,
+        compression: "DEFLATE",
+        compressionOptions: { level: 6 },
+      });
+
+      const pngDataUrl = canvas.toDataURL("image/png", 0.92);
+      if (!pngDataUrl) throw new Error("Failed to generate PNG data URL");
+      pngDataUrls.push(pngDataUrl);
+
+      opts.onProgress?.({
+        current: i + 1,
+        total,
+        phase: "rendering",
+        currentName: currentName(opts.recordDrawOptions[i + 1]),
+      });
+
+      if ((i + 1) % chunkSize === 0 && i + 1 < total) {
+        await yieldToMain();
+      }
+    }
+
+    throwIfAborted(opts.signal);
+    opts.onProgress?.({ current: total, total, phase: "zipping" });
+
+    const pdfStem = containerStemForPattern(settings.filenamePattern);
+    const pdfFilename = `${pdfStem}.pdf`;
+
+    const sourceImageDimensions = {
+      width: opts.imageDimensions.width,
+      height: opts.imageDimensions.height,
+    };
+
+    const pdfBlob = await generatePDF(pngDataUrls, pdfFilename, {
+      pageSize: settings.pageSize,
+      sourceImageDimensions,
+    });
+
+    throwIfAborted(opts.signal);
+
+    zip.file(pdfFilename, await pdfBlob.arrayBuffer(), {
+      binary: true,
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 },
+    });
+
+    const archive = await zip.generateAsync({
+      type: "blob",
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 },
+    });
+
+    opts.onProgress?.({ current: total, total, phase: "done" });
+    return archive;
+  } catch (err) {
+    if (err instanceof BatchAbortError) {
+      opts.onProgress?.({ current: 0, total, phase: "cancelled" });
+    }
+    throw err;
+  } finally {
+    dispose();
+  }
+}
+
+export async function generateOutputBatch(
+  settings: OutputSettings,
+  opts: BatchOptions
+): Promise<Blob> {
+  validateBatchInputs(opts);
+
+  const { format, bundle } = settings;
+
+  if (format === "pdf") {
+    return generatePdfOutput(settings, opts);
+  }
+
+  const mimeType = mimeForFormat(format);
+  const ext = extForFormat(format);
+
+  if (bundle === "with-pdf") {
+    return generateRasterWithPdf(settings, opts, mimeType, ext);
+  }
+
+  return generateRasterZip(settings, opts, mimeType, ext);
+}
+
+export async function generateOutputsBatch(
+  opts: BatchOptions
+): Promise<Blob> {
+  const { pngFilenamePrefix, ...rest } = opts;
+  return generateOutputBatch(
+    {
+      format: "png",
+      scale: 1,
+      filenamePattern: `${pngFilenamePrefix ?? "output"}_{name}`,
+      pageSize: "auto",
+      bundle: "standalone",
+    },
+    rest
+  );
+}
+
+export async function generateImageBatch(
+  opts: BatchOptions
+): Promise<string[]> {
+  return renderPngDataUrls(
+    {
+      format: "png",
+      scale: 1,
+      filenamePattern: "output_{name}",
+      pageSize: "auto",
+      bundle: "standalone",
+    },
+    opts
+  );
+}
+
+/** @deprecated Use `generateOutputsBatch` instead. */
+export { generateOutputsBatch as generateCertificatesBatch };
+/** @deprecated Use `generateImageBatch` instead. */
+export { generateImageBatch as generateCertificateImagesBatch };
+/** @deprecated Use `sanitizeRecordForFilename` instead. */
+export { sanitizeRecordForFilename as sanitizeAttendeeForFilename };

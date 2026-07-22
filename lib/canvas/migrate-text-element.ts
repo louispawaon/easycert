@@ -20,6 +20,7 @@ export type LegacyTextElement = Partial<TextElement> & {
   text?: string;
   value?: string | null;
   variableColumn?: string;
+  variable?: string;
   isDragging?: boolean;
   fontStyle?: string;
   textDecoration?: string;
@@ -30,7 +31,7 @@ export type LegacyTextElement = Partial<TextElement> & {
   fontSize?: number;
   fontFamily?: string;
   color?: string;
-  type?: TextElement["type"];
+  type?: TextElement["type"] | "name";
   id?: string;
   x?: number;
   y?: number;
@@ -66,8 +67,12 @@ function isLegacyShape(el: LegacyTextElement): boolean {
   return false;
 }
 
+function isDynamicType(type: TextElement["type"]): boolean {
+  return type === "name" || type === "dynamic-text";
+}
+
 function defaultMaxWidthPct(type: TextElement["type"]): number {
-  return type === "name" ? 0.7 : 0.6;
+  return isDynamicType(type) ? 0.7 : 0.6;
 }
 
 /**
@@ -86,7 +91,7 @@ export function migrateTextElement(
   const el = raw as LegacyTextElement;
 
   if (typeof el.id !== "string" || !el.id.trim()) return null;
-  if (el.type !== "name" && el.type !== "static") return null;
+  if (el.type !== "name" && el.type !== "dynamic-text" && el.type !== "static") return null;
   if (typeof el.fontSize !== "number" || !Number.isFinite(el.fontSize)) return null;
   if (typeof el.fontFamily !== "string") return null;
   if (typeof el.color !== "string") return null;
@@ -124,13 +129,21 @@ export function migrateTextElement(
   fontSize = Math.max(1, fontSize);
 
   let variableColumn: string | undefined;
-  if (el.type === "name" && el.variableColumn !== undefined && el.variableColumn !== null) {
+  if (isDynamicType(el.type) && el.variableColumn !== undefined && el.variableColumn !== null) {
     const v = typeof el.variableColumn === "string" ? el.variableColumn.trim() : "";
     if (v.length > 0) variableColumn = v;
   }
 
+  let variable: string | undefined;
+  if (isDynamicType(el.type) && (el as Record<string, unknown>).variable !== undefined && (el as Record<string, unknown>).variable !== null) {
+    const v = typeof (el as Record<string, unknown>).variable === "string" ? ((el as Record<string, unknown>).variable as string).trim() : "";
+    if (v.length > 0) variable = v;
+  }
+
+  const resolvedVariable = variable ?? variableColumn;
+
   let value: string | null;
-  if (el.type === "name") {
+  if (isDynamicType(el.type)) {
     value = null;
   } else if (typeof el.value === "string") {
     value = el.value;
@@ -140,10 +153,12 @@ export function migrateTextElement(
     value = "";
   }
 
+  const migratedType: TextElement["type"] = el.type === "name" ? "dynamic-text" : el.type;
+
   const migrated: TextElement = {
     id: el.id,
-    type: el.type,
-    ...(variableColumn !== undefined ? { variableColumn } : {}),
+    type: migratedType,
+    ...(resolvedVariable !== undefined ? { variable: resolvedVariable } : {}),
     x,
     y,
     maxWidthPct,
@@ -184,9 +199,11 @@ export function migrateTextElements(
 export function hasLegacyTextElements(raw: unknown): boolean {
   if (!Array.isArray(raw)) return false;
   for (const item of raw) {
-    if (item && typeof item === "object" && !Array.isArray(item) && isLegacyShape(item as LegacyTextElement)) {
-      return true;
-    }
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const el = item as LegacyTextElement;
+    if (isLegacyShape(el)) return true;
+    if (el.type === "name") return true;
+    if (el.variableColumn !== undefined && el.variableColumn !== null) return true;
   }
   return false;
 }
