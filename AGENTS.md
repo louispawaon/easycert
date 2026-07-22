@@ -5,7 +5,7 @@
 ```
 npm run dev       # next dev --turbopack (port 3000)
 npm run build     # next build
-npm run lint      # next lint (ESLint flat config: next/core-web-vitals + next/typescript)
+npm run lint      # eslint . (flat config: next/core-web-vitals + next/typescript)
 npx tsc --noEmit  # typecheck (no npm script for this)
 ```
 
