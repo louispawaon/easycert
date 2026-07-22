@@ -19,7 +19,6 @@ import {
   normalizeOutputSettings,
   type OutputSettings,
 } from "@/lib/output/output-settings";
-import type { GenerationReport } from "@/lib/output/generation-report";
 import { useLiveQuery } from "dexie-react-hooks";
 import { dittoDb } from "@/lib/db/ditto-db";
 import { useRecords } from "@/hooks/useRecords";
@@ -218,7 +217,12 @@ export function useDesignerController(workspaceKey = 0) {
               value === "" ||
               (typeof value === "string" && !value.trim())
             ) {
-              const { variable: _omit, variableColumn: _omit2, ...rest } = el;
+              const rest = { ...el } as TextElement & {
+                variable?: string;
+                variableColumn?: string;
+              };
+              delete rest.variable;
+              delete rest.variableColumn;
               return rest as TextElement;
             }
           }

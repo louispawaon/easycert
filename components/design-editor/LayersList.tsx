@@ -1,13 +1,12 @@
 "use client";
 
-import type { DesignElement, TextElement } from "@/types/types";
-import { isTextElement, isProofLinkElement } from "@/types/types";
+import type { DesignElement } from "@/types/types";
+import { isProofLinkElement } from "@/types/types";
 import { cn } from "@/lib/cn";
 import { Type, User, Link } from "lucide-react";
 
 interface LayersListProps {
   elements: DesignElement[];
-  textElements: TextElement[];
   selectedElement: string | null;
   onSelect: (id: string | null) => void;
 }
@@ -29,7 +28,7 @@ function getElementIcon(element: DesignElement) {
   return <Type className="h-4 w-4 shrink-0" aria-hidden />;
 }
 
-export function LayersList({ elements, textElements, selectedElement, onSelect }: LayersListProps) {
+export function LayersList({ elements, selectedElement, onSelect }: LayersListProps) {
   if (elements.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">

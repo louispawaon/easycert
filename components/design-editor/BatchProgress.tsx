@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { BatchProgress as BatchProgressType } from "@/lib/batch/batch-engine";
@@ -36,29 +36,59 @@ function phaseLabel(phase: BatchProgressType["phase"]): string {
 }
 
 export function BatchProgress({ progress, onCancel, className }: BatchProgressProps) {
-  const startTimeRef = useRef<number | null>(null);
+  const { phase, current, total } = progress;
+  const isBatchStart = phase === "rendering" && current === 0;
   const [cancelling, setCancelling] = useState(false);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [now, setNow] = useState<number | null>(null);
+  const [wasAtStart, setWasAtStart] = useState(isBatchStart);
+
+  if (isBatchStart !== wasAtStart) {
+    setWasAtStart(isBatchStart);
+    if (isBatchStart) {
+      setCancelling(false);
+      setStartTime(null);
+      setNow(null);
+    }
+  }
 
   useEffect(() => {
-    const isBatchStart =
-      progress.phase === "rendering" && progress.current === 0;
-    if (isBatchStart) {
-      startTimeRef.current = Date.now();
-      setCancelling(false);
+    if (phase !== "rendering") return;
+
+    let cancelled = false;
+    const markStart = (t: number) => {
+      if (cancelled) return;
+      setStartTime(t);
+      setNow(t);
+    };
+
+    if (current === 0) {
+      const t = Date.now();
+      const id = requestAnimationFrame(() => markStart(t));
+      return () => {
+        cancelled = true;
+        cancelAnimationFrame(id);
+      };
     }
-  }, [progress.phase, progress.current, progress.total]);
+
+    const id = window.setInterval(() => setNow(Date.now()), 500);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [phase, current]);
 
   const percent =
-    progress.total > 0
-      ? Math.min(100, Math.round((progress.current / progress.total) * 100))
+    total > 0
+      ? Math.min(100, Math.round((current / total) * 100))
       : 0;
 
   const eta = (() => {
-    if (progress.phase !== "rendering") return null;
-    if (!startTimeRef.current || progress.current === 0) return null;
-    const elapsedMs = Date.now() - startTimeRef.current;
-    const perItemMs = elapsedMs / progress.current;
-    const remainingMs = perItemMs * (progress.total - progress.current);
+    if (phase !== "rendering") return null;
+    if (startTime == null || now == null || current === 0) return null;
+    const elapsedMs = now - startTime;
+    const perItemMs = elapsedMs / current;
+    const remainingMs = perItemMs * (total - current);
     return formatEta(remainingMs / 1000);
   })();
 
@@ -68,7 +98,7 @@ export function BatchProgress({ progress, onCancel, className }: BatchProgressPr
     onCancel();
   };
 
-  const showCancel = progress.phase === "rendering" || progress.phase === "zipping";
+  const showCancel = phase === "rendering" || phase === "zipping";
 
   return (
     <div
@@ -83,12 +113,12 @@ export function BatchProgress({ progress, onCancel, className }: BatchProgressPr
         <div className="space-y-0.5 min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
-            <span className="font-semibold text-sm">{phaseLabel(progress.phase)}</span>
+            <span className="font-semibold text-sm">{phaseLabel(phase)}</span>
             <span className="text-sm text-muted-foreground tabular-nums">
-              {progress.current} / {progress.total} ({percent}%)
+              {current} / {total} ({percent}%)
             </span>
           </div>
-          {progress.currentName && progress.phase === "rendering" ? (
+          {progress.currentName && phase === "rendering" ? (
             <p className="text-xs text-muted-foreground truncate">
               Generating for{" "}
               <span className="font-medium text-foreground">{progress.currentName}</span>
@@ -127,14 +157,14 @@ export function BatchProgress({ progress, onCancel, className }: BatchProgressPr
         role="progressbar"
         aria-label="Batch progress"
         aria-valuemin={0}
-        aria-valuemax={progress.total}
-        aria-valuenow={progress.current}
-        aria-valuetext={`${percent}% complete, ${progress.current} of ${progress.total} outputs`}
+        aria-valuemax={total}
+        aria-valuenow={current}
+        aria-valuetext={`${percent}% complete, ${current} of ${total} outputs`}
       >
         <div
           className={cn(
             "h-full rounded-full transition-[width] duration-200 ease-out",
-            progress.phase === "cancelled" ? "bg-destructive" : "bg-primary"
+            phase === "cancelled" ? "bg-destructive" : "bg-primary"
           )}
           style={{ width: `${percent}%` }}
         />

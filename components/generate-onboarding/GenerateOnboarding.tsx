@@ -58,7 +58,8 @@ export function GenerateOnboarding({
   }, [open, targetElementId]);
 
   useLayoutEffect(() => {
-    updateRect();
+    const id = requestAnimationFrame(() => updateRect());
+    return () => cancelAnimationFrame(id);
   }, [updateRect, safeIndex, wizardStep]);
 
   useLayoutEffect(() => {
@@ -88,9 +89,13 @@ export function GenerateOnboarding({
     };
   }, [open, targetElementId, updateRect]);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevWizardStep, setPrevWizardStep] = useState(wizardStep);
+  if (open !== prevOpen || wizardStep !== prevWizardStep) {
+    setPrevOpen(open);
+    setPrevWizardStep(wizardStep);
     if (open) setIndex(0);
-  }, [open, wizardStep]);
+  }
 
   useEffect(() => {
     if (!open) return;

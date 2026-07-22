@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,11 +38,13 @@ export function TemplateUpload({
         </GenerateHelpHint>
       </div>
       {imagePreview ? (
-        <div className="relative mt-3 flex min-h-[240px] flex-1 items-center justify-center overflow-hidden rounded-md border-2 border-success bg-muted/20 shadow-[0_0_0_4px_var(--success-ring)] transition-[border-color,box-shadow]">
-          <img
+        <div className="relative mt-3 flex min-h-60 flex-1 items-center justify-center overflow-hidden rounded-md border-2 border-success bg-muted/20 shadow-[0_0_0_4px_var(--success-ring)] transition-[border-color,box-shadow]">
+          <Image
             src={imagePreview}
             alt="Design Preview"
-            className="max-h-full max-w-full flex-1 object-contain object-center"
+            fill
+            unoptimized
+            className="object-contain object-center"
           />
           <Button
             variant="outline"
@@ -55,7 +58,7 @@ export function TemplateUpload({
       ) : (
         <div
           className={cn(
-            "mt-3 flex min-h-[240px] flex-1 flex-col items-center justify-center rounded-md border border-dashed p-8 w-full",
+            "mt-3 flex min-h-60 flex-1 flex-col items-center justify-center rounded-md border border-dashed p-8 w-full",
             isDragging && "bg-primary/10"
           )}
           onDragEnter={(e) => {

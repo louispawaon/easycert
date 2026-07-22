@@ -41,15 +41,17 @@ export function usePreGenerationAudit({
 
   useEffect(() => {
     if (!enabled) {
-      setReport(null);
-      setIsAuditing(false);
       return;
     }
 
     const runId = ++runIdRef.current;
-    setIsAuditing(true);
 
     const run = async () => {
+      // Yield so setState is not synchronous inside the effect body (react-hooks lint).
+      await Promise.resolve();
+      if (runId !== runIdRef.current) return;
+      setIsAuditing(true);
+
       try {
         await awaitFontsReady(textElements);
 
@@ -103,5 +105,8 @@ export function usePreGenerationAudit({
     hasTemplate,
   ]);
 
-  return { report, isAuditing };
+  return {
+    report: enabled ? report : null,
+    isAuditing: enabled ? isAuditing : false,
+  };
 }

@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/useToast";
 import type { TextElement, ProofLinkElement, ImageDimensions } from "@/types/types";
-import { isProofLinkElement } from "@/types/types";
 import { renderImage } from "@/lib/render-image";
 import {
   generateOutputBatch,
@@ -14,7 +13,6 @@ import {
 } from "@/lib/batch/batch-engine";
 import { issueProofTokens } from "@/lib/proof/client";
 import { buildProofUrl } from "@/lib/proof/url";
-import { PROOF_TOKEN_PLACEHOLDER } from "@/lib/proof/url";
 import type { RecordDrawContext } from "@/lib/canvas/draw-text-element";
 import type { OutputSettings } from "@/lib/output/output-settings";
 import { containerStemForPattern } from "@/lib/output/filename-pattern";

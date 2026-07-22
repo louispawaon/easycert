@@ -504,7 +504,7 @@ export async function generateOutputsBatch(
     {
       format: "png",
       scale: 1,
-      filenamePattern: `${opts.pngFilenamePrefix ?? "output"}_{name}`,
+      filenamePattern: `${pngFilenamePrefix ?? "output"}_{name}`,
       pageSize: "auto",
       bundle: "standalone",
     },

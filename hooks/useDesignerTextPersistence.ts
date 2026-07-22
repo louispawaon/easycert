@@ -27,7 +27,10 @@ export function useDesignerElementPersistence() {
   const dirtyRef = useRef(false);
   const saveGenerationRef = useRef(0);
   const elementsRef = useRef<DesignElement[]>(designElements);
-  elementsRef.current = designElements;
+
+  useEffect(() => {
+    elementsRef.current = designElements;
+  }, [designElements]);
 
   const persistError = useCallback(
     (err: unknown, context: string) => {
@@ -54,8 +57,10 @@ export function useDesignerElementPersistence() {
     skipNextPersist.current = true;
   }, [appStateRow]);
 
+  const appStateReady = appStateRow !== undefined;
+
   useEffect(() => {
-    if (appStateRow === undefined) return;
+    if (!appStateReady) return;
     if (skipNextPersist.current) {
       skipNextPersist.current = false;
       return;
@@ -80,7 +85,7 @@ export function useDesignerElementPersistence() {
         debounceTimerRef.current = null;
       }
     };
-  }, [designElements, persistError]);
+  }, [designElements, persistError, appStateReady]);
 
   useEffect(() => {
     const flush = () => {

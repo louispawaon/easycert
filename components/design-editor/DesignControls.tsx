@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { GenerateHelpHint } from "@/components/generate-help-hint";
 import { LayersList } from "@/components/design-editor/LayersList";
@@ -63,10 +63,9 @@ export function DesignControls({
     [recordCsvHeaders]
   );
   const [csvFieldKey, setCsvFieldKey] = useState(csvFieldKeyStable);
-
-  useEffect(() => {
-    setCsvFieldKey((cur) => (recordCsvHeaders.includes(cur) ? cur : csvFieldKeyStable));
-  }, [recordCsvHeaders, csvFieldKeyStable]);
+  const effectiveCsvFieldKey = recordCsvHeaders.includes(csvFieldKey)
+    ? csvFieldKey
+    : csvFieldKeyStable;
 
   const processPresetFile = (file: File) => {
     setIsLoading(true);
@@ -189,7 +188,7 @@ export function DesignControls({
                   Choose info to show
                 </Label>
                 <Select
-                  value={csvFieldKey || csvFieldKeyStable}
+                  value={effectiveCsvFieldKey}
                   onValueChange={setCsvFieldKey}
                   disabled={recordCsvHeaders.length === 0}
                 >
@@ -206,11 +205,11 @@ export function DesignControls({
                 </Select>
               </div>
               <Button
-                onClick={() => onInsertFieldFromCsv(csvFieldKey || csvFieldKeyStable)}
+                onClick={() => onInsertFieldFromCsv(effectiveCsvFieldKey)}
                 className={sidebarButtonClass}
                 variant="outline"
                 disabled={
-                  !imageUrl || recordCsvHeaders.length === 0 || !(csvFieldKey || csvFieldKeyStable)
+                  !imageUrl || recordCsvHeaders.length === 0 || !effectiveCsvFieldKey
                 }
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -268,7 +267,7 @@ export function DesignControls({
                   <div className="grid w-full items-center gap-2">
                     <div
                       className={cn(
-                        "relative flex min-h-[140px] flex-col items-center justify-center rounded-md border border-dashed p-6 transition-colors",
+                        "relative flex min-h-35 flex-col items-center justify-center rounded-md border border-dashed p-6 transition-colors",
                         presetDropActive && "border-primary bg-primary/5",
                         isLoading && "pointer-events-none opacity-60"
                       )}
@@ -328,7 +327,6 @@ export function DesignControls({
           </div>
           <LayersList
             elements={placedElements}
-            textElements={textElements}
             selectedElement={selectedElement}
             onSelect={onElementSelect}
           />

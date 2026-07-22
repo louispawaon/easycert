@@ -231,8 +231,11 @@ export function ProjectWorkspace() {
   }, [bumpMount, setWizardStep, toast]);
 
   useEffect(() => {
-    setHeaderActionsEl(document.getElementById("generate-header-actions"));
-    setWizardEl(document.getElementById("generate-step-wizard"));
+    const id = requestAnimationFrame(() => {
+      setHeaderActionsEl(document.getElementById("generate-header-actions"));
+      setWizardEl(document.getElementById("generate-step-wizard"));
+    });
+    return () => cancelAnimationFrame(id);
   }, []);
 
   useEffect(() => {
@@ -256,8 +259,11 @@ export function ProjectWorkspace() {
     if (pendingReopenAfterWizardRef.current && prev !== wizardStep) {
       pendingReopenAfterWizardRef.current = false;
       if (canAutoStartOnboarding()) {
-        setOnboardingRemountKey((k) => k + 1);
-        setOnboardingOpen(true);
+        const id = requestAnimationFrame(() => {
+          setOnboardingRemountKey((k) => k + 1);
+          setOnboardingOpen(true);
+        });
+        return () => cancelAnimationFrame(id);
       }
     }
   }, [wizardStep]);

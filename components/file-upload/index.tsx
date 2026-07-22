@@ -18,7 +18,6 @@ export function FileUpload({ className }: FileUploadProps) {
     handleRecordFileUpload,
     handleClearTemplate,
     handleClearRecords,
-    handleManualRecordChange,
     recordEntryTab,
     handleRecordEntryTabChange,
     recordManualMode,
@@ -52,7 +51,6 @@ export function FileUpload({ className }: FileUploadProps) {
           recordManualMode={recordManualMode}
           handleRecordManualModeChange={handleRecordManualModeChange}
           handleRecordFileUpload={handleRecordFileUpload}
-          handleManualRecordChange={handleManualRecordChange}
           handleManualSimpleChange={handleManualSimpleChange}
           handleManualTableChange={handleManualTableChange}
           handleManualJsonChange={handleManualJsonChange}

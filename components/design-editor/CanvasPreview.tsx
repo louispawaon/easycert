@@ -90,7 +90,10 @@ export function CanvasPreview({
   const [hoveredBoxId, setHoveredBoxId] = useState<string | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [displayedCanvasSize, setDisplayedCanvasSize] = useState({ width: 0, height: 0 });
-  const [, forceUpdate] = useState(0);
+  const measureCtx = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    return document.createElement("canvas").getContext("2d");
+  }, []);
 
   const textElements = useMemo(() => designElements.filter(isTextElement) as TextElement[], [designElements]);
   const proofLinkElements = useMemo(() => designElements.filter(isProofLinkElement) as ProofLinkElement[], [designElements]);
@@ -159,8 +162,11 @@ export function CanvasPreview({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !templateImg) {
-      setBBoxes([]);
-      return;
+      const id = requestAnimationFrame(() => setBBoxes([]));
+      return () => {
+        cancelAnimationFrame(id);
+        renderRunIdRef.current += 1;
+      };
     }
     const runId = ++renderRunIdRef.current;
     (async () => {
@@ -188,10 +194,6 @@ export function CanvasPreview({
       renderRunIdRef.current += 1;
     };
   }, [templateImg, textElementsForRender, proofLinkElements, previewDrawContext]);
-
-  useEffect(() => {
-    forceUpdate((n) => n + 1);
-  }, [designElements]);
 
   useEffect(() => {
     if (!editingElementId) return;
@@ -333,7 +335,8 @@ export function CanvasPreview({
     }
   };
 
-  const canvasPixelWidth = canvasRef.current?.width || imageDimensions.width || 1;
+  const canvasPixelWidth = imageDimensions.width || 1;
+  const canvasPixelHeight = imageDimensions.height || 1;
   const fontScale =
     displayedCanvasSize.width > 0 && canvasPixelWidth > 0
       ? displayedCanvasSize.width / canvasPixelWidth
@@ -345,10 +348,9 @@ export function CanvasPreview({
     const maxWidthPx = editingElement.maxWidthPct * displayedCanvasSize.width;
     const text = editingElement.value ?? "";
     const textToMeasure = text.length > 0 ? text : " ";
-    const ctx = canvasRef.current?.getContext("2d");
 
-    if (ctx) {
-      const measured = measureTextElement(ctx, textToMeasure, editingElement, canvasPixelWidth);
+    if (measureCtx) {
+      const measured = measureTextElement(measureCtx, textToMeasure, editingElement, canvasPixelWidth);
       if (measured) {
         const contentWidthPx = measured.width * fontScale + 12;
         const minWidthPx = Math.max(24, measured.fontSize * fontScale * 0.6);
@@ -358,7 +360,7 @@ export function CanvasPreview({
 
     const estimatedWidthPx = textToMeasure.length * editingElement.fontSize * fontScale * 0.55 + 12;
     return Math.min(maxWidthPx, Math.max(24, estimatedWidthPx));
-  }, [editingElement, displayedCanvasSize.width, canvasPixelWidth, fontScale]);
+  }, [editingElement, displayedCanvasSize.width, canvasPixelWidth, fontScale, measureCtx]);
 
   const canvasSurfaceStyle = fillContainer
     ? fillContainerSize && fillContainerSize.width > 0 && fillContainerSize.height > 0
@@ -410,9 +412,8 @@ export function CanvasPreview({
 
       {imageUrl &&
         bboxes.map((box) => {
-          const canvas = canvasRef.current;
-          const cw = canvas?.width || imageDimensions.width || 1;
-          const ch = canvas?.height || imageDimensions.height || 1;
+          const cw = canvasPixelWidth;
+          const ch = canvasPixelHeight;
           const isSelected = selectedElement === box.id;
           const isEditing = editingElementId === box.id;
           const isHovered = hoveredBoxId === box.id;

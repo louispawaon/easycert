@@ -1,4 +1,4 @@
-import type { TextElement, DesignElement, ImageDimensions } from "@/types/types";
+import type { DesignElement, ImageDimensions } from "@/types/types";
 import { isTextElement } from "@/types/types";
 import { setCustomFontsCache } from "@/lib/fonts-cache";
 import type { WizardStepIndex } from "@/store/designer-ui-store";
@@ -13,7 +13,7 @@ import {
 import { loadTemplateImage } from "@/lib/template-image";
 import { defaultFilenameColumn } from "@/lib/records/record-dataset";
 import type { RecordTable } from "@/lib/db/ditto-db";
-import { DEFAULT_OUTPUT_SETTINGS, type OutputSettings } from "@/lib/output/output-settings";
+import type { OutputSettings } from "@/lib/output/output-settings";
 import type { GenerationReport } from "@/lib/output/generation-report";
 import {
   dittoDb,

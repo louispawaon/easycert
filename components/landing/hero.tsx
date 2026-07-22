@@ -669,8 +669,9 @@ export function LandingHero() {
 
   const record = SAMPLE_ROWS[previewIndex]!;
   const displayIndex = previewIndex + 1;
-  const isIdle = act === "idle";
-  const counterValue = act === "dittoRest" ? counter : displayIndex;
+  const displayAct = reducedMotion ? "idle" : act;
+  const isIdle = displayAct === "idle";
+  const counterValue = displayAct === "dittoRest" ? counter : displayIndex;
 
   const pointerX = useMotionValue(0);
   const pointerY = useMotionValue(0);
@@ -773,7 +774,6 @@ export function LandingHero() {
 
   useEffect(() => {
     if (reducedMotion || userDriven) {
-      if (reducedMotion) setAct("idle");
       return;
     }
 
@@ -789,18 +789,22 @@ export function LandingHero() {
   }, [act, reducedMotion, userDriven]);
 
   useEffect(() => {
-    if (act === "dataBinds" && !reducedMotion && !userDriven) {
-      setShowFlyingToken(true);
-      const id = window.setTimeout(() => setShowFlyingToken(false), 900);
+    if (act !== "dataBinds" || reducedMotion || userDriven) {
+      const id = window.setTimeout(() => setShowFlyingToken(false), 0);
       return () => window.clearTimeout(id);
     }
-    setShowFlyingToken(false);
+    const showId = window.setTimeout(() => setShowFlyingToken(true), 0);
+    const hideId = window.setTimeout(() => setShowFlyingToken(false), 900);
+    return () => {
+      window.clearTimeout(showId);
+      window.clearTimeout(hideId);
+    };
   }, [act, reducedMotion, userDriven]);
 
   useEffect(() => {
     if (act !== "dittoRest" || reducedMotion) {
-      setCounter(1);
-      return;
+      const id = window.setTimeout(() => setCounter(1), 0);
+      return () => window.clearTimeout(id);
     }
 
     const start = performance.now();
@@ -830,7 +834,7 @@ export function LandingHero() {
 
   const showRings = isIdle || userDriven;
   const canvasRecord = isIdle || userDriven ? record : SAMPLE_ROWS[0]!;
-  const isGenerating = act === "dittoRest";
+  const isGenerating = displayAct === "dittoRest";
 
   return (
     <section id="top" className="relative flex min-h-svh flex-col lg:h-svh lg:overflow-hidden">
@@ -961,7 +965,7 @@ export function LandingHero() {
                                   selectedLayerId="name"
                                   showRings={false}
                                   reducedMotion={reducedMotion}
-                                  act={act}
+                                  act={displayAct}
                                 />
                               </motion.div>
                             ))
@@ -980,8 +984,8 @@ export function LandingHero() {
                           selectedLayerId={selectedLayerId}
                           showRings={showRings}
                           reducedMotion={reducedMotion}
-                          act={act}
-                          animateEntrance={act === "makeOne" && !userDriven}
+                          act={displayAct}
+                          animateEntrance={displayAct === "makeOne" && !userDriven}
                         />
                       </motion.div>
                     </div>
@@ -989,7 +993,7 @@ export function LandingHero() {
                 </section>
 
                 <DataRail
-                  act={act}
+                  act={displayAct}
                   previewIndex={previewIndex}
                   selectedLayerId={selectedLayerId}
                   counter={counter}

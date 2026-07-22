@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useToast } from "@/hooks/useToast";
 import { dittoDb, type RecordEntryTab, type RecordManualMode, type RecordTable } from "@/lib/db/ditto-db";
@@ -29,30 +29,36 @@ export function useFileUpload() {
   const [recordManualMode, setRecordManualMode] = useState<RecordManualMode>("simple");
   const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const syncedRef = useRef(false);
+  const [hasSyncedList, setHasSyncedList] = useState(false);
+  const [prevRecordEntryTab, setPrevRecordEntryTab] = useState(row?.recordEntryTab);
+  const [prevRecordManualMode, setPrevRecordManualMode] = useState(row?.recordManualMode);
 
-  useEffect(() => {
-    if (row === undefined) return;
-    if (syncedRef.current) return;
-    syncedRef.current = true;
+  if (!hasSyncedList && row !== undefined) {
+    setHasSyncedList(true);
     if (row.recordTable) {
       setRecordListText(recordsToSimpleList(row.recordTable));
-      return;
+    } else {
+      setRecordListText(row.recordListText ?? "");
     }
-    setRecordListText(row.recordListText ?? "");
-  }, [row]);
+  }
 
-  useEffect(() => {
+  if (row?.recordEntryTab !== prevRecordEntryTab) {
+    setPrevRecordEntryTab(row?.recordEntryTab);
     if (row?.recordEntryTab === "upload" || row?.recordEntryTab === "manual") {
       setRecordEntryTab(row.recordEntryTab);
     }
-  }, [row?.recordEntryTab]);
+  }
 
-  useEffect(() => {
-    if (row?.recordManualMode === "simple" || row?.recordManualMode === "table" || row?.recordManualMode === "json") {
+  if (row?.recordManualMode !== prevRecordManualMode) {
+    setPrevRecordManualMode(row?.recordManualMode);
+    if (
+      row?.recordManualMode === "simple" ||
+      row?.recordManualMode === "table" ||
+      row?.recordManualMode === "json"
+    ) {
       setRecordManualMode(row.recordManualMode);
     }
-  }, [row?.recordManualMode]);
+  }
 
   const handleRecordEntryTabChange = (value: string) => {
     if (value !== "upload" && value !== "manual") return;
@@ -223,11 +229,6 @@ export function useFileUpload() {
     void saveRecordTable({ headers: [], rows: [] }, "");
   };
 
-  const handleManualRecordChange = (value: string) => {
-    setRecordListText(value);
-    void saveRecordListText(value);
-  };
-
   const handleManualSimpleChange = useCallback((value: string) => {
     setRecordListText(value);
     const table = { headers: ["Value"], rows: value.split("\n").map((l) => [l.trim()]) };
@@ -239,7 +240,7 @@ export function useFileUpload() {
     void saveRecordTable(table, mirror);
   }, []);
 
-  const handleManualJsonChange = useCallback((table: RecordTable, json: string) => {
+  const handleManualJsonChange = useCallback((table: RecordTable) => {
     const mirror = table.headers.length > 0 ? table.rows.map((r) => (r[0] ?? "").trim()).join("\n") : "";
     setRecordListText(mirror);
     void saveRecordTable(table, mirror);
@@ -265,7 +266,6 @@ export function useFileUpload() {
     handleRecordFileUpload,
     handleClearTemplate,
     handleClearRecords,
-    handleManualRecordChange,
     handleRecordEntryTabChange,
     handleRecordManualModeChange,
     handleManualSimpleChange,

@@ -40,10 +40,9 @@ interface RecordUploadProps {
   recordManualMode: RecordManualMode;
   handleRecordManualModeChange: (value: string) => void;
   handleRecordFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleManualRecordChange: (value: string) => void;
   handleManualSimpleChange: (value: string) => void;
   handleManualTableChange: (table: RecordTable, mirror: string) => void;
-  handleManualJsonChange: (table: RecordTable, json: string) => void;
+  handleManualJsonChange: (table: RecordTable) => void;
   handleClearRecords: () => void;
   recordTable?: RecordTable;
   recordRowCountEstimate: number;
@@ -59,7 +58,6 @@ export function RecordUpload({
   recordManualMode,
   handleRecordManualModeChange,
   handleRecordFileUpload,
-  handleManualRecordChange,
   handleManualSimpleChange,
   handleManualTableChange,
   handleManualJsonChange,
@@ -161,7 +159,7 @@ export function RecordUpload({
     if ("error" in result) return;
     const normalized = normalizeTableHeadersOnBlur(result);
     setEditingTable(normalized);
-    handleManualJsonChange(normalized, jsonText);
+    handleManualJsonChange(normalized);
   };
 
   const onCellChange = (rowIdx: number, colIdx: number, value: string) => {
@@ -222,7 +220,7 @@ export function RecordUpload({
         <TabsContent value="upload" className="mt-2 flex min-h-0 flex-1 flex-col p-0">
           <div
             className={cn(
-              "flex min-h-[240px] flex-1 w-full flex-col items-center justify-center rounded-md border-2 p-8 transition-[border-color,box-shadow,background-color]",
+              "flex min-h-60 flex-1 w-full flex-col items-center justify-center rounded-md border-2 p-8 transition-[border-color,box-shadow,background-color]",
               hasRecords
                 ? "border-success bg-success/5 shadow-[0_0_0_4px_var(--success-ring)]"
                 : "border-dashed border-border"
@@ -263,7 +261,7 @@ export function RecordUpload({
               <textarea
                 id="manual-records"
                 className={cn(
-                  "min-h-[240px] flex-1 w-full rounded-md border-2 bg-background px-3 py-2 text-sm ring-offset-background transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                  "min-h-60 flex-1 w-full rounded-md border-2 bg-background px-3 py-2 text-sm ring-offset-background transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
                   hasRecords
                     ? "border-success shadow-[0_0_0_4px_var(--success-ring)]"
                     : "border-input"
@@ -291,7 +289,7 @@ export function RecordUpload({
               </div>
               <textarea
                 className={cn(
-                  "min-h-[80px] w-full shrink-0 rounded-md border bg-background px-3 py-2 text-xs font-mono ring-offset-background transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  "min-h-20 w-full shrink-0 rounded-md border bg-background px-3 py-2 text-xs font-mono ring-offset-background transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   hasRecords ? "border-success" : "border-input"
                 )}
                 placeholder={`Name\tRole\nAlex Rivera\tEngineer\nJamie Chen\tDesigner`}
@@ -309,7 +307,7 @@ export function RecordUpload({
                           <th key={ci} className="border-r p-1 last:border-r-0">
                             <div className="flex items-center gap-1">
                               <input
-                                className="w-full min-w-[60px] bg-transparent px-1 py-0.5 font-medium text-foreground outline-none"
+                                className="w-full min-w-15 bg-transparent px-1 py-0.5 font-medium text-foreground outline-none"
                                 value={header}
                                 onChange={(e) => onHeaderChange(ci, e.target.value)}
                                 onBlur={handleTableBlur}
@@ -355,7 +353,7 @@ export function RecordUpload({
                           {row.map((cell, ci) => (
                             <td key={ci} className="border-r p-1 last:border-r-0">
                               <input
-                                className="w-full min-w-[60px] bg-transparent px-1 py-0.5 text-foreground outline-none"
+                                className="w-full min-w-15 bg-transparent px-1 py-0.5 text-foreground outline-none"
                                 value={cell}
                                 onChange={(e) => onCellChange(ri, ci, e.target.value)}
                                 onBlur={handleTableBlur}
@@ -384,7 +382,7 @@ export function RecordUpload({
             <TabsContent value="json" className="mt-2 flex min-h-0 flex-1 flex-col p-0">
               <textarea
                 className={cn(
-                  "min-h-[240px] flex-1 w-full rounded-md border-2 bg-background px-3 py-2 text-xs font-mono ring-offset-background transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  "min-h-60 flex-1 w-full rounded-md border-2 bg-background px-3 py-2 text-xs font-mono ring-offset-background transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   hasRecords ? "border-success" : "border-input"
                 )}
                 placeholder={`["Alex Rivera", "Jamie Chen"]\n\nor\n\n[{ "name": "Alex Rivera", "role": "Engineer" }]`}

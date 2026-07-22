@@ -172,7 +172,7 @@ function validateAppState(app: unknown): ParseResult {
     const elType = (el as Record<string, unknown>).type;
     if (elType !== "qr" && elType !== "proof-link") return el;
     const pl = el as ProofLinkElement;
-    let next = { ...pl };
+    const next = { ...pl };
     if (typeof pl.transparentBg !== "boolean") {
       next.transparentBg = false;
     }

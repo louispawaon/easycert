@@ -13,7 +13,6 @@ import type { DesignerController } from "@/hooks/useDesignerController";
 import type { ProofLinkElement } from "@/types/types";
 import { isProofLinkElement, isTextElement } from "@/types/types";
 import { cn } from "@/lib/cn";
-import type { AuditReport } from "@/lib/audit/pre-generation-audit";
 
 type DesignEditorShellProps = Pick<
   DesignerController,
