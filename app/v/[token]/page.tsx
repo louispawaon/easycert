@@ -21,6 +21,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+function ProofPageBackground() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
+      <div className="ditto-hero-grid ditto-hero-grid--animated absolute inset-0" />
+      <div className="ditto-hero-aurora ditto-hero-aurora--primary" />
+      <div className="ditto-hero-aurora ditto-hero-aurora--secondary" />
+    </div>
+  );
+}
+
 export default async function ProofPage({ params }: Props) {
   const { token } = await params;
   const decoded = decodeURIComponent(token);
@@ -28,23 +38,19 @@ export default async function ProofPage({ params }: Props) {
   const valid = payload !== null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main
-        id="proof-page-main"
-        aria-labelledby="proof-page-label"
-        className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12"
-      >
-        <div className="w-full max-w-lg space-y-3">
-          <p
-            id="proof-page-label"
-            className="text-center text-xs font-medium uppercase tracking-widest text-muted-foreground"
-          >
-            Proof Link
-          </p>
-          <ProofResult valid={valid} payload={valid ? payload : undefined} />
-        </div>
-      </main>
+    <div className="relative min-h-screen bg-background">
+      <ProofPageBackground />
+      <div className="relative z-10">
+        <Header />
+        <main
+          id="proof-page-main"
+          className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12"
+        >
+          <div className="w-full max-w-xl">
+            <ProofResult valid={valid} payload={valid ? payload : undefined} />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
