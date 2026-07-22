@@ -13,9 +13,6 @@ export function isRestorableProject(row: AppStateRecord | undefined | null): boo
   if (row.recordTable?.rows.some((cells) => cells.some((c) => c.trim().length > 0))) {
     return true;
   }
-  if (row.attendeeTable?.rows.some((cells) => cells.some((c) => c.trim().length > 0))) {
-    return true;
-  }
   return false;
 }
 
