@@ -1,29 +1,32 @@
-import type { TextElement, ImageDimensions } from "@/types/types";
+import type { DesignElement, ImageDimensions } from "@/types/types";
+import { isTextElement } from "@/types/types";
 import { setCustomFontsCache } from "@/lib/fonts-cache";
 import type { WizardStepIndex } from "@/store/designer-ui-store";
 import {
-  notifyCertificateImageCleared,
-  notifyCertificateImageUploaded,
-} from "@/store/certificate-image-bridge";
+  notifyTemplateImageCleared,
+  notifyTemplateImageUploaded,
+} from "@/store/template-image-bridge";
 import {
   hasLegacyTextElements,
   migrateTextElements,
 } from "@/lib/canvas/migrate-text-element";
-import { loadCertificateTemplateImage } from "@/lib/cert-template-image";
-import { defaultFilenameColumn } from "@/lib/attendees/attendee-dataset";
-import type { AttendeeTable } from "@/lib/db/easycert-db";
+import { loadTemplateImage } from "@/lib/template-image";
+import { defaultFilenameColumn } from "@/lib/records/record-dataset";
+import type { RecordTable } from "@/lib/db/ditto-db";
+import type { OutputSettings } from "@/lib/output/output-settings";
+import type { GenerationReport } from "@/lib/output/generation-report";
 import {
-  easyCertDb,
+  dittoDb,
   type AppStateRecord,
   type AppStateId,
-  type AttendeeEntryTab,
-} from "./easycert-db";
+  type RecordEntryTab,
+  type RecordManualMode,
+} from "./ditto-db";
 
 const DEFAULT_ID: AppStateId = "default";
 
-/** Set by migrate when legacy localStorage fonts JSON fails to parse — UI may toast once. */
 export const SESSION_LEGACY_FONTS_PARSE_FAILED_KEY =
-  "easycert_session_legacy_fonts_json_parse_failed";
+  "ditto_session_legacy_fonts_json_parse_failed";
 
 function stripInvalidBlobFonts(fonts: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
@@ -35,7 +38,6 @@ function stripInvalidBlobFonts(fonts: Record<string, string>): Record<string, st
   return out;
 }
 
-/** Stored fonts include ephemeral blob URLs that must be stripped from IndexedDB/cache. */
 function customFontsNeedsBlobSanitize(fonts: Record<string, string> | undefined): boolean {
   if (!fonts) return false;
   return Object.values(fonts).some(
@@ -43,36 +45,56 @@ function customFontsNeedsBlobSanitize(fonts: Record<string, string> | undefined)
   );
 }
 
+function normalizeAppStateRecord(row: AppStateRecord): AppStateRecord {
+  const raw = row as unknown as Record<string, unknown>;
+  return {
+    ...row,
+    templateImageUrl: (row.templateImageUrl ?? raw.certificateImageUrl) as string | undefined,
+    recordListText: (row.recordListText ?? raw.attendeeListText) as string | undefined,
+    recordTable: (row.recordTable ?? raw.attendeeTable) as RecordTable | undefined,
+    recordEntryTab: (row.recordEntryTab ?? raw.attendeeEntryTab) as RecordEntryTab | undefined,
+  };
+}
+
 async function getOrCreateRow(): Promise<AppStateRecord> {
-  const row = await easyCertDb.appState.get(DEFAULT_ID);
-  if (row) return row;
+  const row = await dittoDb.appState.get(DEFAULT_ID);
+  if (row) return normalizeAppStateRecord(row);
   const fresh: AppStateRecord = {
     id: DEFAULT_ID,
     customFonts: {},
-    textElements: [],
+    designElements: [],
     wizardStep: 0,
     savedAt: Date.now(),
   };
-  await easyCertDb.appState.put(fresh);
+  await dittoDb.appState.put(fresh);
   return fresh;
 }
 
 async function patchAppState(partial: Partial<Omit<AppStateRecord, "id">>): Promise<void> {
   const cur = await getOrCreateRow();
+  const initialDesignElements: DesignElement[] | undefined = cur.designElements;
+  const resolvedDesignElements = initialDesignElements && initialDesignElements.length > 0
+    ? initialDesignElements
+    : (cur.textElements as DesignElement[] | undefined) ?? [];
   const next: AppStateRecord = {
     id: DEFAULT_ID,
-    certificateImageUrl: cur.certificateImageUrl,
-    attendeeListText: cur.attendeeListText,
-    attendeeTable: cur.attendeeTable,
+    templateImageUrl: cur.templateImageUrl,
+    recordListText: cur.recordListText,
+    recordTable: cur.recordTable,
     filenameColumn: cur.filenameColumn,
-    attendeeEntryTab: cur.attendeeEntryTab,
+    recordEntryTab: cur.recordEntryTab,
+    recordManualMode: cur.recordManualMode,
     customFonts: cur.customFonts ?? {},
-    textElements: cur.textElements ?? [],
+    designElements: resolvedDesignElements,
+    issuer: cur.issuer,
     wizardStep: cur.wizardStep ?? 0,
+    outputSettings: cur.outputSettings,
+    lastGenerationReport: cur.lastGenerationReport,
     ...partial,
     savedAt: Date.now(),
   };
-  await easyCertDb.appState.put(next);
+  delete next.textElements;
+  await dittoDb.appState.put(next);
   if (partial.customFonts !== undefined) {
     setCustomFontsCache(next.customFonts ?? {});
   }
@@ -87,41 +109,42 @@ export async function migrateFromLocalStorage(): Promise<void> {
     localStorage.getItem("customFonts") !== null;
   if (!hasLegacy) return;
 
-  const img = localStorage.getItem("certificateImageUrl");
-  const attendees = localStorage.getItem("attendeeList");
+  const legacyImageUrl = localStorage.getItem("certificateImageUrl");
+  const legacyRecordList = localStorage.getItem("attendeeList");
   const fontsRaw = localStorage.getItem("customFonts");
 
-  const current = await easyCertDb.appState.get(DEFAULT_ID);
+  const current = await dittoDb.appState.get(DEFAULT_ID);
   let customFonts = current?.customFonts ?? {};
   if (fontsRaw) {
     try {
       const parsed = JSON.parse(fontsRaw) as Record<string, string>;
       customFonts = { ...customFonts, ...parsed };
     } catch (err) {
-      console.warn("[EasycertLegacyFontsParse] Failed JSON.parse(customFonts)", err);
+      console.warn("[DittoLegacyFontsParse] Failed JSON.parse(customFonts)", err);
       try {
         sessionStorage.setItem(SESSION_LEGACY_FONTS_PARSE_FAILED_KEY, "1");
       } catch {
         /* ignore quota / unavailable */
       }
-      /* Persist continues with IndexedDB/customFonts subset only; stripped below. */
     }
   }
   customFonts = stripInvalidBlobFonts(customFonts);
 
   const next: AppStateRecord = {
     id: DEFAULT_ID,
-    certificateImageUrl: current?.certificateImageUrl ?? img ?? undefined,
-    attendeeListText: current?.attendeeListText ?? (attendees !== null ? attendees : undefined),
-    attendeeTable: current?.attendeeTable,
+    templateImageUrl: current?.templateImageUrl ?? legacyImageUrl ?? undefined,
+    recordListText: current?.recordListText ?? (legacyRecordList !== null ? legacyRecordList : undefined),
+    recordTable: current?.recordTable,
     filenameColumn: current?.filenameColumn,
-    attendeeEntryTab: current?.attendeeEntryTab,
+    recordEntryTab: current?.recordEntryTab,
     customFonts,
-    textElements: current?.textElements ?? [],
+    designElements: current?.designElements ?? (current?.textElements as DesignElement[]) ?? [],
+    issuer: current?.issuer,
     wizardStep: current?.wizardStep ?? 0,
+    outputSettings: current?.outputSettings,
     savedAt: Date.now(),
   };
-  await easyCertDb.appState.put(next);
+  await dittoDb.appState.put(next);
   setCustomFontsCache(next.customFonts ?? {});
 
   localStorage.removeItem("certificateImageUrl");
@@ -132,34 +155,56 @@ export async function migrateFromLocalStorage(): Promise<void> {
 async function probeImageDimensions(url: string | undefined): Promise<ImageDimensions | undefined> {
   if (!url) return undefined;
   try {
-    const { dimensions } = await loadCertificateTemplateImage(url);
+    const { dimensions } = await loadTemplateImage(url);
     return dimensions;
   } catch {
     return undefined;
   }
 }
 
-/**
- * Rewrite stored text elements to the new percentage/center-anchor schema when
- * the loaded record still uses the legacy pixel layout. Idempotent: returns
- * silently when nothing needs migrating.
- */
-async function migrateTextElementsIfNeeded(): Promise<void> {
-  const row = await easyCertDb.appState.get(DEFAULT_ID);
-  if (!row || !Array.isArray(row.textElements) || row.textElements.length === 0) return;
-  if (!hasLegacyTextElements(row.textElements)) return;
+async function migrateDesignElementsIfNeeded(): Promise<void> {
+  const row = await dittoDb.appState.get(DEFAULT_ID);
+  if (!row) return;
 
-  const dims = await probeImageDimensions(row.certificateImageUrl);
-  const migrated = migrateTextElements(row.textElements, dims);
-  await patchAppState({ textElements: migrated });
+  const hasDesignElements = Array.isArray(row.designElements) && row.designElements.length > 0;
+  const hasTextElements = Array.isArray(row.textElements) && row.textElements.length > 0;
+
+  if (hasDesignElements) {
+    const textElementsOnly = row.designElements!.filter(isTextElement);
+    const hasLegacyText = hasLegacyTextElements(textElementsOnly);
+    const hasLegacyQr = row.designElements!.some(
+      (el) => !isTextElement(el) && (el as Record<string, unknown>).type === "qr"
+    );
+    if (!hasLegacyText && !hasLegacyQr) return;
+
+    const dims = hasLegacyText ? await probeImageDimensions(row.templateImageUrl) : undefined;
+    const migratedText = hasLegacyText
+      ? migrateTextElements(textElementsOnly, dims)
+      : textElementsOnly;
+    const nonTextElements = row.designElements!.filter((el) => !isTextElement(el));
+    const normalizedNonText = nonTextElements.map((el) => {
+      if ((el as Record<string, unknown>).type === "qr") {
+        return { ...el, type: "proof-link" as const };
+      }
+      return el;
+    });
+    const merged: DesignElement[] = [...migratedText, ...normalizedNonText];
+    await patchAppState({ designElements: merged });
+    return;
+  }
+
+  if (hasTextElements) {
+    const dims = await probeImageDimensions(row.templateImageUrl);
+    const migrated = migrateTextElements(row.textElements!, dims);
+    await patchAppState({ designElements: migrated as DesignElement[] });
+  }
 }
 
 let hydrateInFlight: Promise<void> | null = null;
 
-/** Migrate legacy LS, sync caches, sanitize blob font URLs — idempotent. */
 async function hydrateCachesFromDbInner(): Promise<void> {
   await migrateFromLocalStorage();
-  const row = await easyCertDb.appState.get(DEFAULT_ID);
+  const row = await dittoDb.appState.get(DEFAULT_ID);
   setCustomFontsCache(stripInvalidBlobFonts(row?.customFonts ?? {}));
   if (
     row?.customFonts &&
@@ -167,10 +212,9 @@ async function hydrateCachesFromDbInner(): Promise<void> {
   ) {
     await patchAppState({ customFonts: stripInvalidBlobFonts(row.customFonts) });
   }
-  await migrateTextElementsIfNeeded();
+  await migrateDesignElementsIfNeeded();
 }
 
-/** Deduplicate concurrent hydrate (Dexie ready + loadAppState + imports). */
 export async function ensureHydrated(): Promise<void> {
   if (hydrateInFlight) return hydrateInFlight;
   hydrateInFlight = hydrateCachesFromDbInner().finally(() => {
@@ -179,28 +223,27 @@ export async function ensureHydrated(): Promise<void> {
   return hydrateInFlight;
 }
 
-easyCertDb.on("ready", () => {
+dittoDb.on("ready", () => {
   void ensureHydrated();
 });
 
-export async function saveCertificateImage(url: string | null): Promise<void> {
+export async function saveTemplateImage(url: string | null): Promise<void> {
   await patchAppState({
-    certificateImageUrl: url ?? undefined,
+    templateImageUrl: url ?? undefined,
   });
 }
 
-export async function saveAttendeeListText(text: string): Promise<void> {
+export async function saveRecordListText(text: string): Promise<void> {
   await patchAppState({
-    attendeeListText: text,
-    attendeeTable: undefined,
+    recordListText: text,
+    recordTable: undefined,
     filenameColumn: undefined,
   });
 }
 
-/** Multi-column CSV: persists table plus optional preview mirror text and filename column. */
-export async function saveAttendeeTable(
-  table: AttendeeTable,
-  attendeeListMirror: string,
+export async function saveRecordTable(
+  table: RecordTable,
+  recordListMirror: string,
   filenameColumnHint?: string
 ): Promise<void> {
   const filenameColumn =
@@ -208,8 +251,8 @@ export async function saveAttendeeTable(
     defaultFilenameColumn(table.headers) ??
     table.headers[0];
   await patchAppState({
-    attendeeTable: table,
-    attendeeListText: attendeeListMirror,
+    recordTable: table,
+    recordListText: recordListMirror,
     filenameColumn: table.headers.length > 0 ? filenameColumn : undefined,
   });
 }
@@ -218,67 +261,95 @@ export async function saveFilenameColumn(headerKey: string | undefined): Promise
   await patchAppState({ filenameColumn: headerKey });
 }
 
-export async function saveAttendeeEntryTab(tab: AttendeeEntryTab): Promise<void> {
-  await patchAppState({ attendeeEntryTab: tab });
+export async function saveRecordEntryTab(tab: RecordEntryTab): Promise<void> {
+  await patchAppState({ recordEntryTab: tab });
+}
+
+export async function saveRecordManualMode(mode: RecordManualMode): Promise<void> {
+  await patchAppState({ recordManualMode: mode });
 }
 
 export async function saveCustomFonts(fonts: Record<string, string>): Promise<void> {
   await patchAppState({ customFonts: stripInvalidBlobFonts(fonts) });
 }
 
-export async function saveTextElements(elements: TextElement[]): Promise<void> {
-  await patchAppState({ textElements: elements });
+export async function saveDesignElements(elements: DesignElement[]): Promise<void> {
+  await patchAppState({ designElements: elements });
+}
+
+export async function saveIssuer(issuer: string | undefined): Promise<void> {
+  await patchAppState({ issuer: issuer === "" ? undefined : issuer });
 }
 
 export async function saveWizardStep(step: WizardStepIndex): Promise<void> {
   await patchAppState({ wizardStep: step });
 }
 
-/** Open DB, run legacy migration + font cache sync, then read the active row. */
 export async function loadAppState(): Promise<AppStateRecord | null> {
-  await easyCertDb.open();
+  await dittoDb.open();
   await ensureHydrated();
-  const row = await easyCertDb.appState.get(DEFAULT_ID);
+  const row = await dittoDb.appState.get(DEFAULT_ID);
   return row ?? null;
 }
 
-/** Clear the active project in this browser (template, attendees, design, fonts). */
 export async function resetDefaultProject(): Promise<void> {
-  await easyCertDb.open();
+  await dittoDb.open();
   await ensureHydrated();
   const cleared: AppStateRecord = {
     id: DEFAULT_ID,
     customFonts: {},
-    textElements: [],
+    designElements: [],
     wizardStep: 0,
     savedAt: Date.now(),
   };
-  await easyCertDb.appState.put(cleared);
+  await dittoDb.appState.put(cleared);
   setCustomFontsCache({});
-  notifyCertificateImageCleared();
+  notifyTemplateImageCleared();
 }
 
-/** Replace IndexedDB project with validated import; sync caches and image staging events. */
 export async function applyImportedAppState(src: AppStateRecord): Promise<void> {
-  await easyCertDb.open();
+  await dittoDb.open();
   await ensureHydrated();
+  const normalized = normalizeAppStateRecord(src);
   const next: AppStateRecord = {
     id: DEFAULT_ID,
-    certificateImageUrl: src.certificateImageUrl,
-    attendeeListText: src.attendeeListText,
-    attendeeTable: src.attendeeTable,
-    filenameColumn: src.filenameColumn,
-    attendeeEntryTab: src.attendeeEntryTab,
-    customFonts: stripInvalidBlobFonts(src.customFonts ?? {}),
-    textElements: src.textElements ?? [],
+    templateImageUrl: normalized.templateImageUrl,
+    recordListText: normalized.recordListText,
+    recordTable: normalized.recordTable,
+    filenameColumn: normalized.filenameColumn,
+    recordEntryTab: normalized.recordEntryTab,
+    recordManualMode: normalized.recordManualMode,
+    customFonts: stripInvalidBlobFonts(normalized.customFonts ?? {}),
+    designElements: normalized.designElements ?? (normalized.textElements as DesignElement[]) ?? [],
+    issuer: normalized.issuer,
     wizardStep: 0,
+    outputSettings: normalized.outputSettings,
     savedAt: Date.now(),
   };
-  await easyCertDb.appState.put(next);
+  await dittoDb.appState.put(next);
   setCustomFontsCache(next.customFonts ?? {});
-  if (next.certificateImageUrl) {
-    notifyCertificateImageUploaded(next.certificateImageUrl);
+  if (next.templateImageUrl) {
+    notifyTemplateImageUploaded(next.templateImageUrl);
   } else {
-    notifyCertificateImageCleared();
+    notifyTemplateImageCleared();
   }
 }
+
+export async function saveOutputSettings(settings: OutputSettings): Promise<void> {
+  await patchAppState({ outputSettings: settings });
+}
+
+export async function saveLastGenerationReport(report: GenerationReport): Promise<void> {
+  await patchAppState({ lastGenerationReport: report });
+}
+
+export async function clearLastGenerationReport(): Promise<void> {
+  await patchAppState({ lastGenerationReport: undefined });
+}
+
+/** @deprecated Use `saveRecordListText` instead. */
+export { saveRecordListText as saveAttendeeListText };
+/** @deprecated Use `saveRecordTable` instead. */
+export { saveRecordTable as saveAttendeeTable };
+/** @deprecated Use `saveRecordEntryTab` instead. */
+export { saveRecordEntryTab as saveAttendeeEntryTab };

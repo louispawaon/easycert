@@ -1,9 +1,9 @@
 /**
- * Lightweight reusable canvas helper for batch certificate rendering.
+ * Lightweight reusable canvas helper for batch output rendering.
  *
- * Allocating a fresh `HTMLCanvasElement` per certificate strands the GPU/CPU
+ * Allocating a fresh `HTMLCanvasElement` per output strands the GPU/CPU
  * backing store on the JS heap until garbage collection runs, which under
- * tight loops (hundreds of certificates) can spike memory hard enough to
+ * tight loops (hundreds of outputs) can spike memory hard enough to
  * crash the tab. Reusing a single canvas keeps peak memory bounded to one
  * full-resolution bitmap regardless of batch size.
  *

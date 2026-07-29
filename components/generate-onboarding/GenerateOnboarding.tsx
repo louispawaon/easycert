@@ -58,7 +58,8 @@ export function GenerateOnboarding({
   }, [open, targetElementId]);
 
   useLayoutEffect(() => {
-    updateRect();
+    const id = requestAnimationFrame(() => updateRect());
+    return () => cancelAnimationFrame(id);
   }, [updateRect, safeIndex, wizardStep]);
 
   useLayoutEffect(() => {
@@ -88,9 +89,13 @@ export function GenerateOnboarding({
     };
   }, [open, targetElementId, updateRect]);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevWizardStep, setPrevWizardStep] = useState(wizardStep);
+  if (open !== prevOpen || wizardStep !== prevWizardStep) {
+    setPrevOpen(open);
+    setPrevWizardStep(wizardStep);
     if (open) setIndex(0);
-  }, [open, wizardStep]);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -126,8 +131,8 @@ export function GenerateOnboarding({
       className="pointer-events-none fixed inset-0 z-100 flex items-end justify-center p-4 sm:items-center"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="easycert-onboarding-title"
-      aria-describedby="easycert-onboarding-desc"
+      aria-labelledby="ditto-onboarding-title"
+      aria-describedby="ditto-onboarding-desc"
     >
       {rect ? (
         <div
@@ -148,10 +153,10 @@ export function GenerateOnboarding({
           <p className="text-xs font-medium text-muted-foreground">
             Step {safeIndex + 1} of {steps.length}
           </p>
-          <CardTitle id="easycert-onboarding-title" className="text-xl leading-snug">
+          <CardTitle id="ditto-onboarding-title" className="text-xl leading-snug">
             {current.title}
           </CardTitle>
-          <CardDescription id="easycert-onboarding-desc" className="text-base leading-relaxed">
+          <CardDescription id="ditto-onboarding-desc" className="text-base leading-relaxed">
             {current.description}
           </CardDescription>
         </CardHeader>

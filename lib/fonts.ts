@@ -11,6 +11,10 @@ import {
   Raleway,
   Nunito,
   Source_Sans_3,
+  Geist_Mono,
+  Bricolage_Grotesque,
+  Plus_Jakarta_Sans,
+  Instrument_Serif,
 } from "next/font/google";
 import {
   getCustomFontsCache,
@@ -82,7 +86,7 @@ function invalidateFontOptionsCache(): void {
 
 function injectCustomFontFaceIfNeeded(name: string, fontUrl: string): void {
   if (typeof document === "undefined") return;
-  const id = `easycert-font-face-${encodeURIComponent(name)}`;
+  const id = `ditto-font-face-${encodeURIComponent(name)}`;
   const family = JSON.stringify(name);
   const src = JSON.stringify(fontUrl);
   const css = `@font-face{font-family:${family};src:url(${src});}`;
@@ -154,3 +158,28 @@ export type FontKey = keyof typeof FONT_MAP;
 export const FONT_CLASSES = Object.values(FONT_MAP)
   .map((font) => font.variable)
   .join(" ");
+
+const interSans = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
+const bricolageGrotesque = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-heading",
+});
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-subheading",
+});
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: ["400"],
+  style: ["normal", "italic"],
+  variable: "--font-instrument-serif",
+});
+
+export const UI_FONT_CLASSES = [
+  interSans.variable,
+  geistMono.variable,
+  bricolageGrotesque.variable,
+  plusJakartaSans.variable,
+  instrumentSerif.variable,
+].join(" ");

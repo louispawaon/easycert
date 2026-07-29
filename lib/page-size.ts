@@ -1,7 +1,7 @@
 /**
  * Page-size presets used by the PDF generator.
  *
- * `auto` derives the page dimensions from the source certificate image so the
+ * `auto` derives the page dimensions from the source template image so the
  * output is edge-to-edge with no letterboxing. The fixed presets force the
  * given paper size; the cert is then "contain-fit" centered on the page,
  * preserving aspect at the cost of whitespace bands when aspects differ.
@@ -24,7 +24,7 @@ export const PAGE_SIZE_OPTIONS: ReadonlyArray<PageSizeOption> = [
   {
     id: "auto",
     label: "Auto (edge-to-edge)",
-    description: "Page size matches the certificate template. No whitespace.",
+    description: "Page size matches the design template. No whitespace.",
   },
   { id: "a4-landscape", label: "A4 Landscape", description: "297 x 210 mm" },
   { id: "a4-portrait", label: "A4 Portrait", description: "210 x 297 mm" },
@@ -69,7 +69,7 @@ export function resolvePageDimensions(
   return FIXED_DIMENSIONS_MM[pageSize];
 }
 
-/** True when the cert should be drawn edge-to-edge (no letterboxing). */
+/** True when the output should be drawn edge-to-edge (no letterboxing). */
 export function isEdgeToEdge(pageSize: PageSizeId): boolean {
   return pageSize === "auto";
 }

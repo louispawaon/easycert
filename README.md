@@ -1,22 +1,36 @@
-# **EasyCert**
+# **Ditto**
 
-A web-based platform that automates certificate generation for multiple use cases. Users upload custom certificate designs, map participant data to placeholders, and generate personalized certificates in bulk, ready for download distribution.
+> You made one. Ditto the rest.
+
+A web-based platform that turns one design and your data into hundreds of personalized versions. Upload a finished design, map your data to dynamic fields, and bulk-generate personalized outputs ready for download.
+
+## Use Cases
+
+- **Certificates** — Bulk-generate personalized certificates for seminars, training, and events
+- **Event Badges** — Name badges, speaker badges, and attendee passes
+- **Invitations** — Personalized invites and name cards
+- **ID Cards** — Employee or participant ID cards
+- **Speaker Graphics** — Social graphics with different names and titles
+- Any repeatable, data-driven design
 
 ## Features
-- 🎨 **Custom Certificate Design**: Upload your own certificate templates and customize them
-- 📝 **Dynamic Text Elements**: Add and position text elements with drag-and-drop functionality
-- 🖼️ **Real-time Preview**: See changes instantly with live preview functionality
-- 📊 **Bulk Generation**: Generate multiple certificates at once with participant data
-- 🚀 **Next.js Powered**: Fast and responsive web interface
-- 🎨 **Tailwind CSS + shadcn/ui**: Beautiful and consistent UI components
-- 📦 **Modular Architecture**: Easy to extend and maintain
+
+- 🎨 **Bring Your Design** — Upload existing templates (PDF, PNG, JPG). No need to recreate inside Ditto
+- 📝 **Dynamic Text Fields** — Place any variable (name, serial, role, company, etc.) on your design
+- 🔄 **Live Preview** — See real data on the canvas, not abstract placeholders. Switch between records while editing
+- 📊 **Bulk Generation** — Generate hundreds of personalized outputs from pasted names, CSV, or XLSX
+- 🚀 **Next.js Powered** — Fast and responsive web interface
+- 🎨 **Tailwind CSS + shadcn/ui** — Beautiful and consistent UI components
+- 📦 **Modular Architecture** — Easy to extend and maintain
 
 ## Prerequisites
+
 Before you begin, ensure you have the following installed:
+
 - Node.js (v18 or higher)
 - npm (v9 or higher) or yarn
 - Git (for version control)
-  
+
 ## Installation
 
 1. Clone the repository:
@@ -35,10 +49,12 @@ npm install
 ```bash
 npm run dev
 ```
-5. Open your browser and visit `http://localhost:3000` for the landing page, or go directly to the certificate workspace at `http://localhost:3000/generate`
+5. Open your browser and visit `http://localhost:3000` for the landing page, or go directly to the workspace at `http://localhost:3000/generate`
 
 ## Contributing
+
 We welcome contributions! Here's how to get started:
+
 1. Fork the repository
 2. Create a new branch from the `develop` branch:
 ```bash

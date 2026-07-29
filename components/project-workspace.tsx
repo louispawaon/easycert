@@ -4,19 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { FileUpload } from "@/components/file-upload/index";
-import { CertificateDesigner } from "@/components/certificate-designer/index";
-import { CertificateGenerator } from "@/components/certificate-designer/CertificateGenerator";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { DesignEditor } from "@/components/design-editor/index";
+import { GenerateEditorShell } from "@/components/design-editor/generate-editor-shell";
 import { Button } from "@/components/ui/button";
 import { GenerateStepWizard } from "@/components/generate-step-wizard";
-import { useCertificateDesigner } from "@/hooks/useCertificateDesigner";
+import { useDesignerController } from "@/hooks/useDesignerController";
 import { useDesignerUiStore, type WizardStepIndex } from "@/store/designer-ui-store";
 import {
   Dialog,
@@ -34,9 +26,9 @@ import {
   saveWizardStep,
   SESSION_LEGACY_FONTS_PARSE_FAILED_KEY,
 } from "@/lib/db/app-state";
-import { easyCertDb, type AppStateRecord } from "@/lib/db/easycert-db";
+import { dittoDb, type AppStateRecord } from "@/lib/db/ditto-db";
 import { isRestorableProject } from "@/lib/db/session-utils";
-import { readFileAsUtf8, downloadEasycertFile } from "@/lib/project/easycert-file";
+import { readFileAsUtf8, downloadProjectFile } from "@/lib/project/ditto-file";
 import {
   readGenerateOnboardingStatus,
   writeGenerateOnboardingStatus,
@@ -44,8 +36,15 @@ import {
 import { MOBILE_GENERATE_RECOMMENDATION_DISMISSED_EVENT } from "@/lib/generate-onboarding-events";
 import { MOBILE_GENERATE_RECOMMENDATION_SESSION_KEY } from "@/components/mobile-generate-recommendation-dialog";
 import { GenerateOnboarding } from "@/components/generate-onboarding/GenerateOnboarding";
-import { GenerateHelpHint } from "@/components/generate-help-hint";
-import { CirclePlus, Download, Upload } from "lucide-react";
+import { Footer } from "@/components/footer";
+import { CirclePlus, ChevronDown, Download, FolderOpen, HelpCircle, Upload } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const MOBILE_MQ = "(max-width: 767px)";
 
@@ -65,14 +64,15 @@ function canAutoStartOnboarding(): boolean {
 }
 
 export function ProjectWorkspace() {
-  const designer = useCertificateDesigner();
+  const [mountKey, setMountKey] = useState(0);
+  const designer = useDesignerController(mountKey);
   const wizardStep = useDesignerUiStore((s) => s.wizardStep);
   const setWizardStep = useDesignerUiStore((s) => s.setWizardStep);
   const hasHydratedWizardStepRef = useRef(false);
-  const appRow = useLiveQuery(() => easyCertDb.appState.get("default"));
+  const appRow = useLiveQuery(() => dittoDb.appState.get("default"));
 
-  const [mountKey, setMountKey] = useState(0);
   const [headerActionsEl, setHeaderActionsEl] = useState<HTMLElement | null>(null);
+  const [wizardEl, setWizardEl] = useState<HTMLElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [overwriteOpen, setOverwriteOpen] = useState(false);
@@ -85,11 +85,11 @@ export function ProjectWorkspace() {
 
   const bumpMount = useCallback(() => setMountKey((k) => k + 1), []);
 
-  const { imageUrl, attendeesCount, namePlaceholdersCount } = designer;
+  const { imageUrl, recordsCount, dynamicTextElementsCount } = designer;
 
-  const canAdvanceFromUpload = Boolean(imageUrl) && attendeesCount > 0;
+  const canAdvanceFromUpload = Boolean(imageUrl) && recordsCount > 0;
   const canAdvanceFromDesign =
-    Boolean(imageUrl) && attendeesCount > 0 && namePlaceholdersCount > 0;
+    Boolean(imageUrl) && recordsCount > 0 && dynamicTextElementsCount > 0;
 
   const canGoNext = useMemo(() => {
     if (wizardStep === 0) return canAdvanceFromUpload;
@@ -113,15 +113,15 @@ export function ProjectWorkspace() {
       if (!row || !isRestorableProject(row)) {
         toast({
           title: "Nothing to export",
-          description: "Add a template, attendees, or text before exporting.",
+          description: "Add a template, records, or text before exporting.",
           variant: "destructive",
         });
         return;
       }
-      downloadEasycertFile(row, "easycert-project");
+      downloadProjectFile(row, "ditto-project");
       toast({
         title: "Project exported",
-        description: "Your .easycert file has been downloaded.",
+        description: "Your project file has been downloaded.",
       });
     } catch (e) {
       toast({
@@ -172,10 +172,10 @@ export function ProjectWorkspace() {
       e.target.value = "";
       if (!file) return;
       const lower = file.name.toLowerCase();
-      if (!lower.endsWith(".easycert") && !lower.endsWith(".json")) {
+      if (!lower.endsWith(".ditto") && !lower.endsWith(".easycert") && !lower.endsWith(".json")) {
         toast({
           title: "Unsupported file",
-          description: "Choose a .easycert file (or a legacy backup .json).",
+          description: "Choose a .ditto or .easycert project file (or a legacy backup .json).",
           variant: "destructive",
         });
         return;
@@ -190,24 +190,18 @@ export function ProjectWorkspace() {
     [finishImportIfNeeded, toast]
   );
 
-  const wizardStepNav = useMemo(
-    () => (
-      <div
-        id="easycert-onboarding-wizard-nav"
-        className="flex w-full flex-wrap items-center justify-between gap-3"
-      >
-        <Button type="button" variant="outline" disabled={wizardStep === 0} onClick={handleBack}>
-          Back
-        </Button>
-        {wizardStep < 2 ? (
-          <Button type="button" disabled={!canGoNext} onClick={handleNext}>
-            Next
-          </Button>
-        ) : null}
-      </div>
-    ),
-    [wizardStep, canGoNext, handleBack, handleNext]
+  const wizardBackButton = (
+    <Button type="button" variant="outline" size="sm" disabled={wizardStep === 0} onClick={handleBack}>
+      Back
+    </Button>
   );
+
+  const wizardNextButton =
+    wizardStep < 2 ? (
+      <Button type="button" size="sm" disabled={!canGoNext} onClick={handleNext}>
+        Next
+      </Button>
+    ) : null;
 
   const confirmOverwrite = useCallback(async () => {
     const app = pendingAppRef.current;
@@ -237,7 +231,11 @@ export function ProjectWorkspace() {
   }, [bumpMount, setWizardStep, toast]);
 
   useEffect(() => {
-    setHeaderActionsEl(document.getElementById("generate-header-actions"));
+    const id = requestAnimationFrame(() => {
+      setHeaderActionsEl(document.getElementById("generate-header-actions"));
+      setWizardEl(document.getElementById("generate-step-wizard"));
+    });
+    return () => cancelAnimationFrame(id);
   }, []);
 
   useEffect(() => {
@@ -261,8 +259,11 @@ export function ProjectWorkspace() {
     if (pendingReopenAfterWizardRef.current && prev !== wizardStep) {
       pendingReopenAfterWizardRef.current = false;
       if (canAutoStartOnboarding()) {
-        setOnboardingRemountKey((k) => k + 1);
-        setOnboardingOpen(true);
+        const id = requestAnimationFrame(() => {
+          setOnboardingRemountKey((k) => k + 1);
+          setOnboardingOpen(true);
+        });
+        return () => cancelAnimationFrame(id);
       }
     }
   }, [wizardStep]);
@@ -326,62 +327,74 @@ export function ProjectWorkspace() {
         ref={fileInputRef}
         type="file"
         className="hidden"
-        accept=".easycert,.json,application/json"
+        accept=".ditto,.easycert,.json,application/json"
         onChange={onFileSelected}
       />
+      {wizardEl
+        ? createPortal(
+            <GenerateStepWizard variant="compact" currentStepIndex={wizardStep} />,
+            wizardEl
+          )
+        : null}
+
       {headerActionsEl
         ? createPortal(
             <>
               <Button
                 type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0 lg:hidden"
+                onClick={openHowThisWorks}
+                title="How this works"
+                aria-label="How this works"
+              >
+                <HelpCircle className="h-4 w-4" aria-hidden />
+              </Button>
+              <Button
+                type="button"
                 variant="link"
                 size="sm"
-                className="h-9 shrink-0 px-2 text-xs underline-offset-4 hover:underline sm:text-sm"
+                className="hidden h-9 shrink-0 px-2 text-xs underline-offset-4 hover:underline lg:inline-flex lg:text-sm"
                 onClick={openHowThisWorks}
                 title="How this works"
               >
-                <span className="sm:hidden">Help</span>
-                <span className="hidden sm:inline">How this works</span>
+                How this works
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
-                onClick={() => fileInputRef.current?.click()}
-                aria-label="Import .easycert project file"
-                title="Import .easycert project file"
-              >
-                <Upload className="h-4 w-4 sm:mr-2" aria-hidden />
-                <span className="hidden sm:inline">Import .easycert</span>
-                <span className="sm:hidden">Import</span>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
-                onClick={() => void handleExport()}
-                aria-label="Export project as .easycert file"
-                title="Export .easycert"
-              >
-                <Download className="h-4 w-4 sm:mr-2" aria-hidden />
-                <span className="hidden sm:inline">Export .easycert</span>
-                <span className="sm:hidden">Export</span>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
-                onClick={() => setStartNewOpen(true)}
-                aria-label="Start a new project"
-                title="Start new project"
-              >
-                <CirclePlus className="h-4 w-4 sm:mr-2" aria-hidden />
-                <span className="hidden sm:inline">Start new</span>
-                <span className="sm:hidden">New</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shrink-0 px-2 text-xs lg:px-3 lg:text-sm"
+                    aria-label="Project actions"
+                    title="Project actions"
+                  >
+                    <FolderOpen className="h-4 w-4 lg:mr-2" aria-hidden />
+                    <span className="hidden lg:inline">Project</span>
+                    <ChevronDown className="hidden h-4 w-4 opacity-60 lg:inline" aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="h-4 w-4" aria-hidden />
+                    Import Project
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void handleExport()}>
+                    <Download className="h-4 w-4" aria-hidden />
+                    Export Project
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setStartNewOpen(true)}
+                  >
+                    <CirclePlus className="h-4 w-4" aria-hidden />
+                    Start new
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>,
             headerActionsEl
           )
@@ -398,7 +411,7 @@ export function ProjectWorkspace() {
           <DialogHeader>
             <DialogTitle>Replace current project?</DialogTitle>
             <DialogDescription>
-              This replaces your current project in this browser. Export a .easycert copy first if you want to keep what you have.
+              This replaces your current project in this browser. Export a copy first if you want to keep what you have.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -423,7 +436,7 @@ export function ProjectWorkspace() {
           <DialogHeader>
             <DialogTitle>Start a new project?</DialogTitle>
             <DialogDescription>
-              This clears your template, attendee list, and design from this browser. Use Export if you need a backup first.
+              This clears your template, record list, and design from this browser. Use Export if you need a backup first.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -446,58 +459,46 @@ export function ProjectWorkspace() {
         onFinishedSegmentSubstep={onFinishedSegmentSubstep}
       />
 
-      <div key={`workspace-${mountKey}`} className="grid min-w-0 gap-8">
-        <div className="w-full min-w-0">
-          <GenerateStepWizard currentStepIndex={wizardStep} />
-        </div>
+      <div className="flex h-full min-h-0 flex-col">
+      {wizardStep === 0 ? (
+        <FileUpload
+          key={`workspace-${mountKey}`}
+          className="min-h-0 flex-1"
+        />
+      ) : null}
 
-        {wizardStep === 0 ? (
-          <FileUpload wizardFooter={wizardStepNav} />
-        ) : null}
+      {wizardStep === 1 ? (
+        <DesignEditor
+          key={`workspace-${mountKey}`}
+          {...designer}
+          className="min-h-0 flex-1"
+        />
+      ) : null}
 
-        {wizardStep === 1 ? <CertificateDesigner {...designer} wizardFooter={wizardStepNav} /> : null}
-
-        {wizardStep === 2 ? (
-          <Card className="mb-8 min-w-0">
-            <CardHeader className="min-w-0">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <CardTitle className="text-xl font-semibold sm:text-2xl md:text-3xl lg:text-4xl">
-                  Generate Certificates
-                </CardTitle>
-                <GenerateHelpHint label="Help: generate step">
-                  <span>
-                    When you are ready, download a ZIP of images or one PDF.
-                    Large lists may take longer, so keep this tab open until download starts.
-                  </span>
-                </GenerateHelpHint>
-              </div>
-              <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground font-light">
-                Generate certificates for all attendees in your list
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="min-w-0">
-              <CertificateGenerator
-                imageUrl={designer.imageUrl}
-                attendeesCount={designer.attendeesCount}
-                textElementsCount={designer.textElementsCount}
-                namePlaceholdersCount={designer.namePlaceholdersCount}
-                isGenerating={designer.isGenerating}
-                activeGenerationKind={designer.activeGenerationKind}
-                batchProgress={designer.batchProgress}
-                onCancel={designer.cancelGeneration}
-                pageSize={designer.pageSize}
-                onPageSizeChange={designer.setPageSize}
-                outputFileBaseName={designer.outputFileBaseName}
-                onOutputFileBaseNameChange={designer.setOutputFileBaseName}
-                onGenerate={designer.generateCertificates}
-                onGeneratePDF={designer.generateCertificatesPDF}
-              />
-            </CardContent>
-            <CardFooter className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-6">
-              {wizardStepNav}
-            </CardFooter>
-          </Card>
-        ) : null}
+      {wizardStep === 2 ? (
+        <GenerateEditorShell
+          key={`workspace-${mountKey}`}
+          className="min-h-0 flex-1"
+          imageUrl={designer.imageUrl}
+          recordsCount={designer.recordsCount}
+          textElementsCount={designer.textElementsCount}
+          dynamicTextElementsCount={designer.dynamicTextElementsCount}
+          proofLinkElementsCount={designer.proofLinkElementsCount}
+          issuer={designer.issuer}
+          isGenerating={designer.isGenerating}
+          activeGenerationKind={designer.activeGenerationKind}
+          batchProgress={designer.batchProgress}
+          onCancel={designer.cancelGeneration}
+          outputSettings={designer.outputSettings}
+          onOutputSettingsChange={designer.handleOutputSettingsChange}
+          onGenerate={designer.generateOutputs}
+          auditReport={designer.auditReport}
+          isAuditing={designer.isAuditing}
+          generationReport={designer.generationReport}
+          onDismissReport={designer.dismissGenerationReport}
+        />
+      ) : null}
+      <Footer leading={wizardBackButton} trailing={wizardNextButton} />
       </div>
     </>
   );

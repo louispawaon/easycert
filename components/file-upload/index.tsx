@@ -1,94 +1,67 @@
 "use client";
 
-import type { ReactNode } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { useFileUpload } from "@/hooks/useFileUpload";
-import { CertificateUpload } from "@/components/file-upload/CertificateUpload";
-import { AttendeeUpload } from "@/components/file-upload/AttendeeUpload";
-import { AutosaveStatus } from "@/components/AutosaveStatus";
-import { GenerateHelpHint } from "@/components/generate-help-hint";
+import { TemplateUpload } from "@/components/file-upload/TemplateUpload";
+import { RecordUpload } from "@/components/file-upload/RecordUpload";
+import { UploadEditorShell } from "@/components/file-upload/upload-editor-shell";
 
 export interface FileUploadProps {
-  wizardFooter?: ReactNode;
+  className?: string;
 }
 
-export function FileUpload({ wizardFooter }: FileUploadProps) {
+export function FileUpload({ className }: FileUploadProps) {
   const {
-    attendeeList,
+    recordListText,
     imagePreview,
     isUploading,
-    processCertificateFile,
-    handleAttendeeFileUpload,
-    handleClearCertificate,
-    handleClearAttendees,
-    handleManualAttendeeChange,
-    attendeeEntryTab,
-    handleAttendeeEntryTabChange,
-    attendeeTable,
-    attendeeRowCount,
-    attendeeCsvColumnCount,
-    attendeeFilenameColumnPick,
+    processTemplateFile,
+    handleRecordFileUpload,
+    handleClearTemplate,
+    handleClearRecords,
+    recordEntryTab,
+    handleRecordEntryTabChange,
+    recordManualMode,
+    handleRecordManualModeChange,
+    handleManualSimpleChange,
+    handleManualTableChange,
+    handleManualJsonChange,
+    recordTable,
+    recordRowCount,
+    recordCsvColumnCount,
+    recordFilenameColumnPick,
     persistFilenameColumn,
   } = useFileUpload();
 
   return (
-    <Card className="min-w-0">
-      <CardHeader className="p-4 sm:p-6">
-        <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <CardTitle className="text-xl font-semibold sm:text-2xl md:text-3xl lg:text-4xl">
-                Upload your files
-              </CardTitle>
-              <GenerateHelpHint label="Help: upload step">
-                <span>
-                  Upload your certificate image and your attendee list first.
-                  You need both before you can design or generate files.
-                </span>
-              </GenerateHelpHint>
-            </div>
-            <CardDescription className="text-sm sm:text-base lg:text-lg text-muted-foreground font-light">
-              Upload your certificate template and attendee list to get started.
-            </CardDescription>
-          </div>
-          <AutosaveStatus />
-        </div>
-      </CardHeader>
-      <CardContent className="min-w-0">
-        <div className="grid min-w-0 gap-6 md:grid-cols-2">
-          <CertificateUpload
-            imagePreview={imagePreview}
-            onCertificateFile={processCertificateFile}
-            handleClearCertificate={handleClearCertificate}
-            isUploading={isUploading}
-          />
-          <AttendeeUpload
-            attendeeList={attendeeList}
-            attendeeEntryTab={attendeeEntryTab}
-            handleAttendeeEntryTabChange={handleAttendeeEntryTabChange}
-            handleAttendeeFileUpload={handleAttendeeFileUpload}
-            handleManualAttendeeChange={handleManualAttendeeChange}
-            handleClearAttendees={handleClearAttendees}
-            attendeeTable={attendeeTable}
-            attendeeRowCountEstimate={attendeeRowCount}
-            attendeeCsvColumnCount={attendeeCsvColumnCount}
-            attendeeFilenameColumnPick={attendeeFilenameColumnPick}
-            onFilenameColumnChange={persistFilenameColumn}
-          />
-        </div>
-      </CardContent>
-      {wizardFooter ? (
-        <CardFooter className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-6">
-          {wizardFooter}
-        </CardFooter>
-      ) : null}
-    </Card>
+    <UploadEditorShell
+      className={className}
+      templateUpload={
+        <TemplateUpload
+          imagePreview={imagePreview}
+          onTemplateFile={processTemplateFile}
+          handleClearTemplate={handleClearTemplate}
+          isUploading={isUploading}
+        />
+      }
+      recordUpload={
+        <RecordUpload
+          recordListText={recordListText}
+          recordEntryTab={recordEntryTab}
+          handleRecordEntryTabChange={handleRecordEntryTabChange}
+          recordManualMode={recordManualMode}
+          handleRecordManualModeChange={handleRecordManualModeChange}
+          handleRecordFileUpload={handleRecordFileUpload}
+          handleManualSimpleChange={handleManualSimpleChange}
+          handleManualTableChange={handleManualTableChange}
+          handleManualJsonChange={handleManualJsonChange}
+          handleClearRecords={handleClearRecords}
+          recordTable={recordTable}
+          recordRowCountEstimate={recordRowCount}
+          recordCsvColumnCount={recordCsvColumnCount}
+          recordFilenameColumnPick={recordFilenameColumnPick}
+          onFilenameColumnChange={persistFilenameColumn}
+        />
+      }
+    />
   );
-} 
+}

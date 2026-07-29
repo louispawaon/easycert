@@ -1,34 +1,35 @@
 import { create } from "zustand";
-import { DEFAULT_PAGE_SIZE, type PageSizeId } from "@/lib/page-size";
 
 export type WizardStepIndex = 0 | 1 | 2;
 
 type DesignerUiState = {
   selectedElement: string | null;
+  editingElementId: string | null;
   isGenerating: boolean;
   previewIndex: number;
   wizardStep: WizardStepIndex;
-  pageSize: PageSizeId;
   setSelectedElement: (id: string | null) => void;
+  setEditingElementId: (id: string | null) => void;
   setIsGenerating: (value: boolean) => void;
   setPreviewIndex: (value: number | ((prev: number) => number)) => void;
   setWizardStep: (step: WizardStepIndex) => void;
-  setPageSize: (pageSize: PageSizeId) => void;
   reset: () => void;
 };
 
 const initial = {
   selectedElement: null as string | null,
+  editingElementId: null as string | null,
   isGenerating: false,
   previewIndex: 0,
   wizardStep: 0 as WizardStepIndex,
-  pageSize: DEFAULT_PAGE_SIZE,
 };
 
 export const useDesignerUiStore = create<DesignerUiState>((set) => ({
   ...initial,
 
   setSelectedElement: (id) => set({ selectedElement: id }),
+
+  setEditingElementId: (id) => set({ editingElementId: id }),
 
   setIsGenerating: (value) => set({ isGenerating: value }),
 
@@ -38,8 +39,6 @@ export const useDesignerUiStore = create<DesignerUiState>((set) => ({
     })),
 
   setWizardStep: (wizardStep) => set({ wizardStep }),
-
-  setPageSize: (pageSize) => set({ pageSize }),
 
   reset: () => set(initial),
 }));
