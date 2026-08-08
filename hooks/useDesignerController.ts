@@ -38,6 +38,7 @@ export interface TextProperties {
   color: string;
   fontWeight: "normal" | "bold";
   textDecoration: "none" | "underline";
+  textAlign: "left" | "center" | "right";
   maxWidthPct: number;
 }
 
@@ -48,6 +49,7 @@ const STYLE_KEYS: ReadonlyArray<keyof TextProperties> = [
   "color",
   "fontWeight",
   "textDecoration",
+  "textAlign",
   "maxWidthPct",
 ];
 
