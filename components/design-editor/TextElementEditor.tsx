@@ -129,6 +129,7 @@ export function TextElementEditor({
     color: el.color,
     fontWeight: el.fontWeight,
     textDecoration: el.textDecoration,
+    textAlign: el.textAlign ?? "center",
     maxWidthPct: el.maxWidthPct,
   });
 
@@ -255,7 +256,7 @@ export function TextElementEditor({
 
       <div className="min-w-0 space-y-4 border-t pt-4">
         <div className="min-w-0 space-y-2">
-          <Label className="flex items-center gap-2 leading-snug">Position (center anchor)</Label>
+          <Label className="flex items-center gap-2 leading-snug">Position</Label>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label htmlFor="pos-x" className="text-xs">X (%)</Label>
@@ -283,6 +284,25 @@ export function TextElementEditor({
             </div>
           </div>
         </div>
+
+
+        <div className="min-w-0 space-y-2 border-t pt-4">
+          <Label className="leading-snug">Text Alignment</Label>
+          <Select
+            value={element.textAlign ?? "center"}
+            onValueChange={(value) => onUpdate('textAlign', value as "left" | "center" | "right")}
+          >
+            <SelectTrigger className="min-w-0 w-full">
+              <SelectValue placeholder="Select alignment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="left">Left</SelectItem>
+              <SelectItem value="center">Center</SelectItem>
+              <SelectItem value="right">Right</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
 
         <div className="min-w-0 space-y-2 border-t pt-4">
           <div className="flex items-center justify-between gap-3">
@@ -331,7 +351,7 @@ export function TextElementEditor({
               <div className="space-y-3 rounded-md border p-3">
                 <div
                   className={cn(
-                    "relative flex min-h-[120px] flex-col items-center justify-center rounded-md border border-dashed px-4 py-5 transition-colors",
+                    "relative flex min-h-30 flex-col items-center justify-center rounded-md border border-dashed px-4 py-5 transition-colors",
                     fontDropActive && "border-primary bg-primary/5"
                   )}
                   onDragOver={(e) => {

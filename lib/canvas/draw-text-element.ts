@@ -119,9 +119,17 @@ export function drawTextElement(
   if (!measurement) return;
   const fontStyle = element.fontStyle ?? "normal";
   const textDecoration = element.textDecoration ?? "none";
+  const textAlign = element.textAlign ?? "center";
 
   const x = element.x * canvasWidth;
   const y = element.y * canvasHeight;
+  const maxWidth = Math.max(0, element.maxWidthPct * canvasWidth);
+  const boxHalfWidth = maxWidth > 0 ? maxWidth / 2 : measurement.width / 2;
+  const leftEdge = x - boxHalfWidth;
+  const rightEdge = x + boxHalfWidth;
+  const textX = textAlign === "left" ? leftEdge : textAlign === "right" ? rightEdge : x;
+  const underlineStartX = textAlign === "left" ? leftEdge : textAlign === "right" ? rightEdge - measurement.width : x - measurement.width / 2;
+  const underlineEndX = textAlign === "left" ? leftEdge + measurement.width : textAlign === "right" ? rightEdge : x + measurement.width / 2;
 
   ctx.save();
   ctx.font = buildFontShorthand(
@@ -130,17 +138,16 @@ export function drawTextElement(
     measurement.fontSize,
     element.fontFamily
   );
-  ctx.textAlign = "center";
+  ctx.textAlign = textAlign;
   ctx.textBaseline = "middle";
   ctx.fillStyle = element.color;
-  ctx.fillText(measurement.text, x, y);
+  ctx.fillText(measurement.text, textX, y);
   if (textDecoration === "underline") {
     const underlineY = y + measurement.fontSize * 0.52;
-    const underlineHalfWidth = measurement.width / 2;
     ctx.lineWidth = Math.max(1, measurement.fontSize * 0.06);
     ctx.beginPath();
-    ctx.moveTo(x - underlineHalfWidth, underlineY);
-    ctx.lineTo(x + underlineHalfWidth, underlineY);
+    ctx.moveTo(underlineStartX, underlineY);
+    ctx.lineTo(underlineEndX, underlineY);
     ctx.strokeStyle = element.color;
     ctx.stroke();
   }
@@ -206,10 +213,16 @@ export function measureElementBBoxes(
     if (!m) continue;
     const cx = element.x * canvasWidth;
     const cy = element.y * canvasHeight;
+    const maxWidth = Math.max(0, element.maxWidthPct * canvasWidth);
+    const boxHalfWidth = maxWidth > 0 ? maxWidth / 2 : m.width / 2;
+    const leftEdge = cx - boxHalfWidth;
+    const rightEdge = cx + boxHalfWidth;
+    const left = element.textAlign === "left" ? leftEdge : element.textAlign === "right" ? rightEdge - m.width : cx - m.width / 2;
+
     out.push({
       id: element.id,
       type: element.type,
-      left: cx - m.width / 2,
+      left,
       top: cy - m.height / 2,
       width: m.width,
       height: m.height,
