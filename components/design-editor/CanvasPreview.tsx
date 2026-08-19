@@ -549,18 +549,28 @@ export function CanvasPreview({
           onClick={(e) => e.stopPropagation()}
           className="absolute z-20 border-0 bg-transparent p-0 outline-none ring-2 ring-info"
           style={{
-            left: `${editingElement.x * 100}%`,
+            left:
+              editingElement.textAlign === "left"
+                ? `${((editingElement.x - editingElement.maxWidthPct / 2) * 100)}%`
+                : editingElement.textAlign === "right"
+                  ? `${((editingElement.x + editingElement.maxWidthPct / 2) * 100)}%`
+                  : `${editingElement.x * 100}%`,
             top: `${editingElement.y * 100}%`,
             width: editingInputWidthPx != null ? `${editingInputWidthPx}px` : undefined,
             maxWidth: `${editingElement.maxWidthPct * 100}%`,
-            transform: "translate(-50%, -50%)",
+            transform:
+              editingElement.textAlign === "left"
+                ? "translate(0, -50%)"
+                : editingElement.textAlign === "right"
+                  ? "translate(-100%, -50%)"
+                  : "translate(-50%, -50%)",
             fontFamily: `"${editingElement.fontFamily}"`,
             fontSize: `${editingElement.fontSize * fontScale}px`,
             fontStyle: editingElement.fontStyle,
             fontWeight: editingElement.fontWeight,
             textDecoration: editingElement.textDecoration,
             color: editingElement.color,
-            textAlign: "center",
+            textAlign: editingElement.textAlign ?? "center",
           }}
         />
       ) : null}

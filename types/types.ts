@@ -1,6 +1,7 @@
 import { PROOF_LINK_DEFAULT_SIZE_PCT } from "@/lib/canvas/proof-link-render";
 
 export type TextElementType = 'dynamic-text' | 'static' | 'name';
+export type TextAlignment = 'left' | 'center' | 'right';
 
 export type TextElement = {
   id: string;
@@ -14,6 +15,7 @@ export type TextElement = {
   fontStyle: 'normal' | 'italic';
   fontWeight: 'normal' | 'bold';
   textDecoration: 'none' | 'underline';
+  textAlign: TextAlignment;
   color: string;
   value: string | null;
   /** @deprecated Use `variable` instead. */
@@ -61,6 +63,7 @@ export function createDynamicTextElement(variableColumn?: string): TextElement {
     fontStyle: "normal",
     fontWeight: "normal",
     textDecoration: "none",
+    textAlign: "center",
     color: "#1a1a18",
     value: null,
   };
@@ -89,6 +92,7 @@ export function createStaticElement(): TextElement {
     fontStyle: 'normal',
     fontWeight: 'normal',
     textDecoration: 'none',
+    textAlign: 'center',
     color: '#1a1a18',
     value: 'Enter text here',
   };

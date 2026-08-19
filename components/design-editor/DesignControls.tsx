@@ -87,6 +87,9 @@ export function DesignControls({
         if (raw.textDecoration === "underline" || raw.textDecoration === "none") {
           properties.textDecoration = raw.textDecoration;
         }
+        if (raw.textAlign === "left" || raw.textAlign === "center" || raw.textAlign === "right") {
+          properties.textAlign = raw.textAlign;
+        }
         if (typeof raw.maxWidthPct === "number") {
           properties.maxWidthPct = Math.min(1, Math.max(0.05, raw.maxWidthPct));
         }

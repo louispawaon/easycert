@@ -57,6 +57,10 @@ function coerceTextDecoration(raw: unknown): TextElement["textDecoration"] {
   return raw === "underline" ? "underline" : "none";
 }
 
+function coerceTextAlign(raw: unknown): TextElement["textAlign"] {
+  return raw === "left" || raw === "right" ? raw : "center";
+}
+
 function isLegacyShape(el: LegacyTextElement): boolean {
   // Legacy elements either expose `text` instead of `value`, or carry pixel
   // coordinates (>1) or omit `maxWidthPct`.
@@ -167,6 +171,7 @@ export function migrateTextElement(
     fontStyle: coerceFontStyle(el.fontStyle),
     fontWeight: coerceFontWeight(el.fontWeight),
     textDecoration: coerceTextDecoration(el.textDecoration),
+    textAlign: coerceTextAlign(el.textAlign),
     color: el.color,
     value,
   };
